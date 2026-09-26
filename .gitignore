@@ -46,6 +46,7 @@ local.properties
 *.apk
 *.ap_
 *.aab
+*.aar
 
 # OS files
 Thumbs.db

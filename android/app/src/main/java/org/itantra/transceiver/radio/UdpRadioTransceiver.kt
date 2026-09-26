@@ -36,6 +36,9 @@ class UdpRadioTransceiver(
 
     private var multicastLock: WifiManager.MulticastLock? = null
 
+    var echoSelfPackets: Boolean = false
+    private val localSentSeqNums = java.util.Collections.synchronizedSet(LinkedHashSet<Int>())
+
     private val _incomingPackets = MutableSharedFlow<TantraPacket>(extraBufferCapacity = 64)
     val incomingPackets: SharedFlow<TantraPacket> = _incomingPackets.asSharedFlow()
 
@@ -71,8 +74,13 @@ class UdpRadioTransceiver(
                         val rawData = buffer.copyOf(packet.length)
                         try {
                             val decoded = TantraPacket.decode(rawData)
-                            Log.d(TAG, "Received packet seq #${decoded.seqNum}: ${decoded.text}")
-                            _incomingPackets.emit(decoded)
+                            val isSelf = localSentSeqNums.contains(decoded.seqNum)
+                            if (isSelf && !echoSelfPackets) {
+                                Log.d(TAG, "Filtering self broadcast echo seq #${decoded.seqNum}")
+                            } else {
+                                Log.d(TAG, "Received packet seq #${decoded.seqNum}: ${decoded.text}")
+                                _incomingPackets.emit(decoded)
+                            }
                         } catch (e: Exception) {
                             Log.w(TAG, "Failed to decode incoming radio packet: ${e.message}")
                         }
@@ -94,6 +102,15 @@ class UdpRadioTransceiver(
     fun transmit(packet: TantraPacket) {
         scope.launch {
             try {
+                localSentSeqNums.add(packet.seqNum)
+                if (localSentSeqNums.size > 200) {
+                    val it = localSentSeqNums.iterator()
+                    if (it.hasNext()) {
+                        it.next()
+                        it.remove()
+                    }
+                }
+
                 val encodedBytes = packet.encode()
                 val broadcastAddr = InetAddress.getByName(BROADCAST_IP)
                 val datagram = DatagramPacket(encodedBytes, encodedBytes.size, broadcastAddr, port)

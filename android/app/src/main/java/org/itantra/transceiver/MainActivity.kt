@@ -11,10 +11,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -38,14 +38,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.launch
 import org.itantra.transceiver.audio.AudioPlayerManager
-import org.itantra.transceiver.audio.AudioRecordManager
 import org.itantra.transceiver.emergency.EmergencyAlertManager
+import org.itantra.transceiver.engine.SpeechToTextManager
 import org.itantra.transceiver.engine.TextToSpeechManager
 import org.itantra.transceiver.protocol.TantraPacket
 import org.itantra.transceiver.radio.UdpRadioTransceiver
-import java.io.ByteArrayOutputStream
 
 class MainActivity : ComponentActivity() {
 
@@ -53,24 +51,23 @@ class MainActivity : ComponentActivity() {
     private lateinit var audioPlayer: AudioPlayerManager
     private lateinit var alertManager: EmergencyAlertManager
     private lateinit var ttsManager: TextToSpeechManager
-    private var audioRecorder: AudioRecordManager? = null
+    private lateinit var sttManager: SpeechToTextManager
 
-    private val audioBuffer = ByteArrayOutputStream()
+    private var pendingEmergency = false
+    private var pendingLangId = 0
+    private var pendingOnSent: ((TantraPacket) -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Initialize Core Engines
-        radioTransceiver = UdpRadioTransceiver(this)
+        radioTransceiver = UdpRadioTransceiver(this).apply {
+            echoSelfPackets = true // Single-device demo mode: enabled by default so user can hear TTS feedback
+        }
         audioPlayer = AudioPlayerManager()
         alertManager = EmergencyAlertManager(this)
         ttsManager = TextToSpeechManager(this)
-
-        audioRecorder = AudioRecordManager(sampleRate = 16000) { pcmChunk, _ ->
-            synchronized(audioBuffer) {
-                audioBuffer.write(pcmChunk)
-            }
-        }
+        sttManager = SpeechToTextManager(this)
 
         radioTransceiver.startListening()
 
@@ -80,19 +77,22 @@ class MainActivity : ComponentActivity() {
                 audioPlayer = audioPlayer,
                 alertManager = alertManager,
                 ttsManager = ttsManager,
-                onStartPtt = { startPttRecording() },
+                sttManager = sttManager,
+                onStartPtt = { langId -> startPttRecording(langId) },
                 onStopPtt = { isEmergency, selectedLangId, onSent ->
                     stopPttAndTransmit(isEmergency, selectedLangId, onSent)
+                },
+                onSendDirectText = { text, langId, isEmergency, onSent ->
+                    transmitDirectMessage(text, langId, isEmergency, onSent)
                 }
             )
         }
     }
 
-    private fun startPttRecording() {
-        synchronized(audioBuffer) {
-            audioBuffer.reset()
+    private fun startPttRecording(selectedLangId: Int) {
+        sttManager.startListening(selectedLangId) { recognizedText ->
+            handleSpeechRecognitionResult(recognizedText)
         }
-        audioRecorder?.startRecording()
     }
 
     private fun stopPttAndTransmit(
@@ -100,40 +100,94 @@ class MainActivity : ComponentActivity() {
         selectedLangId: Int,
         onSent: (TantraPacket) -> Unit
     ) {
-        audioRecorder?.stopRecording()
-        audioPlayer.playRogerBeep()
+        pendingEmergency = isEmergency
+        pendingLangId = selectedLangId
+        pendingOnSent = onSent
+        sttManager.stopListening()
+    }
 
-        val capturedBytes: ByteArray
-        synchronized(audioBuffer) {
-            capturedBytes = audioBuffer.toByteArray()
-            audioBuffer.reset()
-        }
+    private fun handleSpeechRecognitionResult(text: String) {
+        val onSent = pendingOnSent
+        pendingOnSent = null
+        val isEmergency = pendingEmergency
+        val selectedLangId = pendingLangId
 
-        // Generate transcript or test message
-        val defaultText = if (selectedLangId == 1) {
-            if (isEmergency) "Emergency SOS: Immediate evacuation requested near northern bridge"
-            else "Patrol unit calling base. Radio check signal loud and clear."
+        val trimmedText = text.trim()
+        if (trimmedText.isNotBlank()) {
+            val detected = TantraPacket.detectLanguage(trimmedText)
+            val langToUse = if (selectedLangId == 0 || selectedLangId == 1) {
+                if (detected == 1 || detected == 0) detected else selectedLangId
+            } else {
+                selectedLangId
+            }
+
+            val packet = TantraPacket(
+                text = trimmedText,
+                langId = langToUse,
+                isEmergency = isEmergency,
+                isPtt = true,
+                seqNum = (1..65534).random()
+            )
+
+            radioTransceiver.transmit(packet)
+            audioPlayer.playRogerBeep()
+            runOnUiThread {
+                onSent?.invoke(packet)
+            }
         } else {
-            if (isEmergency) "आपातकालीन संदेश: बाढ़ का पानी बढ़ रहा है तुरंत सहायता भेजें"
-            else "सभी दलों को सूचित किया जाता है कि मार्ग सुरक्षित है"
+            if (isEmergency) {
+                val emergencyText = if (selectedLangId == 1) {
+                    "Emergency SOS: Distress signal beacon activated!"
+                } else {
+                    "आपातकालीन संदेश: संकट संकेत सक्रिय किया गया तुरंत सहायता भेजें!"
+                }
+                val packet = TantraPacket(
+                    text = emergencyText,
+                    langId = selectedLangId,
+                    isEmergency = true,
+                    isPtt = true,
+                    seqNum = (1..65534).random()
+                )
+                radioTransceiver.transmit(packet)
+                audioPlayer.playRogerBeep()
+                runOnUiThread {
+                    onSent?.invoke(packet)
+                }
+            } else {
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "No voice recognized. Hold PTT button and speak clearly.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
         }
+    }
 
+    private fun transmitDirectMessage(
+        text: String,
+        langId: Int,
+        isEmergency: Boolean,
+        onSent: (TantraPacket) -> Unit
+    ) {
+        if (text.isBlank()) return
         val packet = TantraPacket(
-            text = defaultText,
-            langId = selectedLangId,
+            text = text.trim(),
+            langId = langId,
             isEmergency = isEmergency,
-            isPtt = true,
-            seqNum = (System.currentTimeMillis() % 1000).toInt()
+            isPtt = false,
+            seqNum = (1..65534).random()
         )
-
         radioTransceiver.transmit(packet)
+        audioPlayer.playRogerBeep()
         onSent(packet)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         radioTransceiver.stop()
-        audioRecorder?.stopRecording()
+        sttManager.shutdown()
         ttsManager.shutdown()
     }
 }
@@ -160,25 +214,31 @@ fun TacticalTransceiverScreen(
     audioPlayer: AudioPlayerManager,
     alertManager: EmergencyAlertManager,
     ttsManager: TextToSpeechManager,
-    onStartPtt: () -> Unit,
-    onStopPtt: (Boolean, Int, (TantraPacket) -> Unit) -> Unit
+    sttManager: SpeechToTextManager,
+    onStartPtt: (Int) -> Unit,
+    onStopPtt: (Boolean, Int, (TantraPacket) -> Unit) -> Unit,
+    onSendDirectText: (String, Int, Boolean, (TantraPacket) -> Unit) -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     var isPttPressed by remember { mutableStateOf(false) }
     var isEmergencySos by remember { mutableStateOf(false) }
-    var isPhoneMode by remember { mutableStateOf(false) } // PTT vs Phone Mode
     var selectedLangId by remember { mutableStateOf(0) } // 0 = Hindi, 1 = English
+    var echoSelfMode by remember { mutableStateOf(radio.echoSelfPackets) }
+    var directTextInput by remember { mutableStateOf("") }
+    var showDirectInput by remember { mutableStateOf(false) }
+
+    val partialText by sttManager.partialText.collectAsState()
+    val audioLevel by sttManager.audioLevel.collectAsState()
 
     val messageLog = remember { mutableStateListOf<TransmissionItem>() }
 
-    // Request Audio & Permission Launcher
+    // Request Audio Permission Launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (!granted) {
-            Toast.makeText(context, "Microphone permission is required for walkie-talkie", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Microphone permission is required for voice transceiver", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -206,9 +266,9 @@ fun TacticalTransceiverScreen(
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isPttPressed) 1.15f else 1f,
+        targetValue = if (isPttPressed) (1.05f + audioLevel * 0.2f) else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(400, easing = FastOutSlowInEasing),
+            animation = tween(300, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulseScale"
@@ -242,12 +302,21 @@ fun TacticalTransceiverScreen(
                 )
             }
 
-            // Radio Link Badge
+            // Radio Link Badge / Echo Toggle
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(DarkSurface)
+                    .clickable {
+                        echoSelfMode = !echoSelfMode
+                        radio.echoSelfPackets = echoSelfMode
+                        Toast.makeText(
+                            context,
+                            if (echoSelfMode) "Echo Playback: ON (Single-Device Demo)" else "Echo Playback: OFF (Radio Field Link)",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Box(
@@ -258,15 +327,16 @@ fun TacticalTransceiverScreen(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (isEmergencySos) "SOS ACTIVE" else "AIRLINK OK",
-                    color = Color.White,
+                    text = if (echoSelfMode) "DEMO ECHO ON" else "FIELD LINK",
+                    color = if (echoSelfMode) TacticalCyan else TacticalGreen,
                     fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // 2. Telemetry HUD
         Card(
@@ -277,27 +347,27 @@ fun TacticalTransceiverScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(10.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("BITRATE", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                    Text("~160 bps", color = TacticalCyan, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Text("~160 bps", color = TacticalCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("BANDWIDTH SAVED", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                    Text("99.9%", color = TacticalGreen, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Text("COMPRESSION", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                    Text("99.9%", color = TacticalGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("MODE", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                    Text(if (isPhoneMode) "PHONE (VAD)" else "WALKIE (PTT)", color = TacticalAmber, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Text("ASR ENGINE", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                    Text(TantraPacket.LANG_NAMES[selectedLangId].uppercase(), color = TacticalAmber, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // 3. Mode & Emergency Toggles
+        // 3. Language & SOS Control Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -307,16 +377,28 @@ fun TacticalTransceiverScreen(
             Button(
                 onClick = { selectedLangId = (selectedLangId + 1) % 2 },
                 colors = ButtonDefaults.buttonColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(6.dp)
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Icon(Icons.Default.Language, contentDescription = null, tint = TacticalAmber, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = TantraPacket.LANG_NAMES[selectedLangId].uppercase(),
+                    text = "LANG: ${TantraPacket.LANG_NAMES[selectedLangId].uppercase()}",
                     color = Color.White,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace
                 )
+            }
+
+            // Keyboard direct input toggle
+            IconButton(
+                onClick = { showDirectInput = !showDirectInput },
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(DarkSurface)
+                    .size(36.dp)
+            ) {
+                Icon(Icons.Default.Keyboard, contentDescription = "Keyboard input", tint = if (showDirectInput) TacticalCyan else TextMuted, modifier = Modifier.size(18.dp))
             }
 
             // Emergency SOS Button Toggle
@@ -324,26 +406,111 @@ fun TacticalTransceiverScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (isEmergencySos) TacticalRed.copy(alpha = 0.2f) else DarkSurface)
+                    .background(if (isEmergencySos) TacticalRed.copy(alpha = 0.25f) else DarkSurface)
                     .border(1.dp, if (isEmergencySos) TacticalRed else Color.Transparent, RoundedCornerShape(6.dp))
                     .clickable { isEmergencySos = !isEmergencySos }
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
                 Icon(Icons.Default.Warning, contentDescription = null, tint = if (isEmergencySos) TacticalRed else TextMuted, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "SOS DISTRESS",
                     color = if (isEmergencySos) TacticalRed else TextMuted,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Direct Text Input Drawer (Optional text dispatch)
+        AnimatedVisibility(visible = showDirectInput) {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextField(
+                        value = directTextInput,
+                        onValueChange = { directTextInput = it },
+                        placeholder = { Text("Type tactical text or emergency message...", fontSize = 12.sp, color = TextMuted) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp)),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = DarkSurface,
+                            unfocusedContainerColor = DarkSurface,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Button(
+                        onClick = {
+                            if (directTextInput.isNotBlank()) {
+                                onSendDirectText(directTextInput, selectedLangId, isEmergencySos) { sentPacket ->
+                                    messageLog.add(0, TransmissionItem(sentPacket, isIncoming = false))
+                                }
+                                directTextInput = ""
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TacticalAmber),
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.Black, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
 
-        // 4. Large PTT Walkie-Talkie Button
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Live Speech Recognition Status Banner
+        AnimatedVisibility(
+            visible = isPttPressed || partialText.isNotBlank(),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF13222E)),
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, TacticalCyan.copy(alpha = 0.6f))
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(TacticalGreen)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "LIVE SPEECH TRANSCRIPTION (${TantraPacket.LANG_NAMES[selectedLangId].uppercase()})",
+                            color = TacticalCyan,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (partialText.isNotBlank()) "\"$partialText\"" else "Listening... speak now into microphone",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+        }
+
+        // 4. Large Circular PTT Walkie-Talkie Button
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -352,7 +519,7 @@ fun TacticalTransceiverScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .size(180.dp)
+                    .size(170.dp)
                     .scale(pulseScale)
                     .clip(CircleShape)
                     .background(
@@ -369,7 +536,7 @@ fun TacticalTransceiverScreen(
                         when (motionEvent.action) {
                             MotionEvent.ACTION_DOWN -> {
                                 isPttPressed = true
-                                onStartPtt()
+                                onStartPtt(selectedLangId)
                                 true
                             }
                             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -389,14 +556,20 @@ fun TacticalTransceiverScreen(
                         imageVector = if (isPttPressed) Icons.Default.Mic else Icons.Default.MicNone,
                         contentDescription = "PTT",
                         tint = Color.White,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(46.dp)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = if (isPttPressed) "TRANSMITTING" else "HOLD TO TALK",
+                        text = if (isPttPressed) "TRANSMITTING..." else "HOLD TO TALK",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = if (isPttPressed) "LIVE ASR ON" else "RELEASE TO SEND",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace
                     )
                 }
@@ -417,7 +590,7 @@ fun TacticalTransceiverScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(140.dp)
+                .height(150.dp)
         ) {
             items(messageLog) { item ->
                 Card(
@@ -445,8 +618,8 @@ fun TacticalTransceiverScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = if (item.packet.isEmergency) "[EMERGENCY ALERT]" else "[RADIO MSG]",
-                                    color = if (item.packet.isEmergency) TacticalRed else TacticalAmber,
+                                    text = if (item.packet.isEmergency) "[EMERGENCY ALERT]" else if (item.isIncoming) "[RX RECEIVED]" else "[TX SENT]",
+                                    color = if (item.packet.isEmergency) TacticalRed else if (item.isIncoming) TacticalCyan else TacticalAmber,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
@@ -478,102 +651,6 @@ fun TacticalTransceiverScreen(
                         ) {
                             Icon(Icons.Default.VolumeUp, contentDescription = "Play", tint = TacticalCyan, modifier = Modifier.size(16.dp))
                         }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true, widthDp = 360, heightDp = 740)
-@Composable
-fun TacticalTransceiverPreview() {
-    Surface(modifier = Modifier.fillMaxSize(), color = DarkBackground) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("iTANTRA TRANSCEIVER", color = TacticalAmber, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                    Text("Ch 1 (433.500 MHz / UDP 5005)", color = TextMuted, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkSurface)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text("AIRLINK OK", color = TacticalGreen, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Telemetry
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("BITRATE", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                        Text("~160 bps", color = TacticalCyan, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("BANDWIDTH SAVED", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                        Text("99.9%", color = TacticalGreen, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("MODE", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                        Text("WALKIE (PTT)", color = TacticalAmber, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // PTT Circle
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(180.dp)
-                        .clip(CircleShape)
-                        .background(DarkSurface)
-                        .border(3.dp, TacticalAmber, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.MicNone, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("HOLD TO TALK", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
-                    }
-                }
-            }
-
-            // Traffic Log
-            Text("TRANSCEIVER TRAFFIC LOG", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-            Spacer(modifier = Modifier.height(6.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(6.dp)
-            ) {
-                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CallReceived, contentDescription = null, tint = TacticalCyan, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text("[RADIO MSG] Hindi • 52B", color = TacticalAmber, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        Text("बाढ़ का पानी पुल तक आ गया है तुरंत सहायता भेजें", color = Color.White, fontSize = 12.sp)
                     }
                 }
             }

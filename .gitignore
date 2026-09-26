@@ -1,0 +1,51 @@
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Audio recordings & test outputs
+*.wav
+*.mp3
+*.ogg
+benchmarks/results/*.wav
+
+# Machine Learning Large Binary Models (downloaded via download_models.py)
+core_engine/models/stt/*
+!core_engine/models/stt/.gitkeep
+core_engine/models/tts/*
+!core_engine/models/tts/.gitkeep
+
+# Android Studio & Gradle
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+/android/app/build/
+/android/build/
+/android/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.ap_
+*.aab
+
+# OS files
+Thumbs.db

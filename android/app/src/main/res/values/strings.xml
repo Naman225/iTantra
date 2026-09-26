@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">iTantra</string>
+    <string name="app_tagline">Neural Transceiver Radio Access</string>
+    <string name="ptt_hold_to_talk">HOLD TO TALK</string>
+    <string name="ptt_transmitting">TRANSMITTING...</string>
+    <string name="mode_ptt">PTT Walkie-Talkie</string>
+    <string name="mode_phone">Phone Mode (VAD)</string>
+    <string name="sos_alert">EMERGENCY SOS</string>
+</resources>

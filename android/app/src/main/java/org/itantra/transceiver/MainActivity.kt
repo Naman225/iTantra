@@ -484,3 +484,99 @@ fun TacticalTransceiverScreen(
         }
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, widthDp = 360, heightDp = 740)
+@Composable
+fun TacticalTransceiverPreview() {
+    Surface(modifier = Modifier.fillMaxSize(), color = DarkBackground) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("iTANTRA TRANSCEIVER", color = TacticalAmber, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Text("Ch 1 (433.500 MHz / UDP 5005)", color = TextMuted, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(DarkSurface)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text("AIRLINK OK", color = TacticalGreen, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Telemetry
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("BITRATE", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                        Text("~160 bps", color = TacticalCyan, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("BANDWIDTH SAVED", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                        Text("99.9%", color = TacticalGreen, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("MODE", color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                        Text("WALKIE (PTT)", color = TacticalAmber, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // PTT Circle
+            Box(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(180.dp)
+                        .clip(CircleShape)
+                        .background(DarkSurface)
+                        .border(3.dp, TacticalAmber, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.MicNone, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("HOLD TO TALK", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+                    }
+                }
+            }
+
+            // Traffic Log
+            Text("TRANSCEIVER TRAFFIC LOG", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+            Spacer(modifier = Modifier.height(6.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CallReceived, contentDescription = null, tint = TacticalCyan, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text("[RADIO MSG] Hindi • 52B", color = TacticalAmber, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text("बाढ़ का पानी पुल तक आ गया है तुरंत सहायता भेजें", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}

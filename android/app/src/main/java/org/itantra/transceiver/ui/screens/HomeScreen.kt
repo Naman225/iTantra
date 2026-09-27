@@ -98,6 +98,9 @@ fun HomeScreen(
                 alertManager.overrideVolumeToMax()
                 alertManager.triggerDistressVibration()
                 ttsManager.speak(packet.text, packet.langCode, isEmergency = true)
+            } else if (packet.isAlert) {
+                alertManager.triggerDistressVibration()
+                ttsManager.speak("Warning: " + packet.text, packet.langCode, isEmergency = false)
             } else {
                 audioPlayer.playRogerBeep()
                 ttsManager.speak(packet.text, packet.langCode, isEmergency = false)
@@ -148,11 +151,14 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Language selector
+                // 3 Primary Languages: Hindi (0), English (1), Tamil (6)
+                val primaryLanguages = listOf(0, 1, 6)
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        selectedLangId = (selectedLangId + 1) % 2
+                        val currIdx = primaryLanguages.indexOf(selectedLangId)
+                        val nextIdx = if (currIdx == -1) 0 else (currIdx + 1) % primaryLanguages.size
+                        selectedLangId = primaryLanguages[nextIdx]
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight),
                     shape = RoundedCornerShape(8.dp),
@@ -444,36 +450,76 @@ fun HomeScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 2.dp),
+                            .padding(vertical = 3.dp),
                         horizontalArrangement = if (isOutgoing) Arrangement.End else Arrangement.Start
                     ) {
                         Card(
-                            modifier = Modifier.widthIn(max = 280.dp),
+                            modifier = Modifier.widthIn(max = 290.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = when {
-                                    item.packet.isEmergency -> SOSRed.copy(alpha = 0.12f)
+                                    item.packet.isEmergency -> Color(0xFFFEE2E2) // Red SOS tint
+                                    item.packet.isAlert -> Color(0xFFFEF3C7)     // Yellow Alert tint
                                     isOutgoing -> PrimaryLight
                                     else -> CardWhite
                                 }
                             ),
+                            border = when {
+                                item.packet.isEmergency -> BorderStroke(1.dp, SOSRed)
+                                item.packet.isAlert -> BorderStroke(1.dp, Color(0xFFF59E0B))
+                                else -> BorderStroke(0.5.dp, Color(0xFFE5E7EB))
+                            },
                             shape = RoundedCornerShape(
                                 topStart = 12.dp,
                                 topEnd = 12.dp,
                                 bottomStart = if (isOutgoing) 12.dp else 4.dp,
                                 bottomEnd = if (isOutgoing) 4.dp else 12.dp
                             ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                         ) {
                             Column(modifier = Modifier.padding(10.dp)) {
                                 if (item.packet.isEmergency) {
-                                    Text(
-                                        text = "⚠️ Emergency Alert",
-                                        color = SOSRed,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Warning, contentDescription = null, tint = SOSRed, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "🚨 RED SOS DISTRESS",
+                                            color = SOSRed,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                } else if (item.packet.isAlert) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.WarningAmber, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "⚠️ YELLOW TACTICAL ALERT",
+                                            color = Color(0xFFB45309),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                } else {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(AccentGreen)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = "🟢 ROUTINE COMMS",
+                                            color = AccentGreen,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(3.dp))
                                 }
+
                                 Text(
                                     text = item.packet.text,
                                     color = TextDark,
@@ -482,7 +528,7 @@ fun HomeScreen(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "${item.packet.langName} • ${item.packet.encode().size}B",
+                                        text = "${item.packet.langName} • ${if (isOutgoing) "Sent" else "Received"}",
                                         color = TextSecondary,
                                         fontSize = 10.sp
                                     )
@@ -519,7 +565,7 @@ fun HomeScreen(
                     Icon(Icons.Default.HelpOutline, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "How to Use iTantra",
+                        text = "3-Tier Life Safety Protocol",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = TextDark
@@ -529,27 +575,27 @@ fun HomeScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     HowToGuideItem(
-                        icon = Icons.Default.Mic,
-                        title = "Hold to Talk",
-                        description = "Hold the big blue button, speak into your mic, and release to send your voice note."
-                    )
-
-                    HowToGuideItem(
-                        icon = Icons.Default.Keyboard,
-                        title = "Type Text Messages",
-                        description = "Or type your message in the bottom bar and tap the send arrow."
-                    )
-
-                    HowToGuideItem(
                         icon = Icons.Default.Warning,
-                        title = "Emergency SOS",
-                        description = "Tap the SOS button or say words like 'Emergency', 'Alert', or 'आपातकालीन' to trigger an urgent alarm on all phones."
+                        title = "🔴 Red SOS: Life Distress",
+                        description = "Say 'SOS', 'Help', 'Bachao', or tap the SOS button. Sounds max-volume siren and pushes emergency alert to all radios."
                     )
 
                     HowToGuideItem(
-                        icon = Icons.Default.Wifi,
-                        title = "Connect 2 Phones Without Internet",
-                        description = "Turn on 'Mobile Hotspot' on Phone 1, connect Phone 2 to its Wi-Fi, and both phones can talk peer-to-peer!"
+                        icon = Icons.Default.WarningAmber,
+                        title = "🟡 Yellow Alert: Tactical Warning",
+                        description = "Say 'Alert', 'Warning', 'Khatra', or 'Eccarikkai'. Broadcasts high-priority warning notification across the field."
+                    )
+
+                    HowToGuideItem(
+                        icon = Icons.Default.Radio,
+                        title = "🟢 Green Normal: Routine Voice",
+                        description = "Hold the button and speak normally. Converts speech to text and transmits 100% offline peer-to-peer."
+                    )
+
+                    HowToGuideItem(
+                        icon = Icons.Default.Language,
+                        title = "🇮🇳 3 Indian Languages",
+                        description = "Tap the top language button to switch between Hindi, English, and Tamil."
                     )
                 }
             },
@@ -559,7 +605,7 @@ fun HomeScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Got it, let's talk!", fontWeight = FontWeight.SemiBold)
+                    Text("Understood", fontWeight = FontWeight.SemiBold)
                 }
             },
             containerColor = CardWhite,

@@ -13,13 +13,22 @@ data class TantraPacket(
     val text: String,
     val langId: Int,
     val isEmergency: Boolean = false,
+    val isAlert: Boolean = false,
     val isPtt: Boolean = true,
     val seqNum: Int = 1
 ) {
+    val priorityLevel: Int
+        get() = when {
+            isEmergency -> 1 // Priority 1: SOS (Red)
+            isAlert -> 2     // Priority 2: Alert (Yellow)
+            else -> 3        // Priority 3: Normal (Green)
+        }
+
     companion object {
         const val MAGIC_BYTE: Byte = 0x54 // 'T'
-        const val FLAG_ALERT_EMERGENCY: Byte = 0x80.toByte() // Bit 7
+        const val FLAG_ALERT_EMERGENCY: Byte = 0x80.toByte() // Bit 7: SOS Red
         const val FLAG_PTT_MODE: Byte = 0x40.toByte()        // Bit 6
+        const val FLAG_TACTICAL_ALERT: Byte = 0x20.toByte()  // Bit 5: Alert Yellow
         const val LANG_MASK: Byte = 0x0F                     // Bits 0-3
 
         // 10 Mandated Indian Languages Mapping
@@ -131,6 +140,7 @@ data class TantraPacket(
             }
 
             val isEmergency = (flags and (FLAG_ALERT_EMERGENCY.toInt() and 0xFF)) != 0
+            val isAlert = (flags and (FLAG_TACTICAL_ALERT.toInt() and 0xFF)) != 0
             val isPtt = (flags and (FLAG_PTT_MODE.toInt() and 0xFF)) != 0
             val langId = flags and (LANG_MASK.toInt() and 0xFF)
             val text = String(payload, StandardCharsets.UTF_8)
@@ -139,6 +149,7 @@ data class TantraPacket(
                 text = text,
                 langId = langId,
                 isEmergency = isEmergency,
+                isAlert = isAlert,
                 isPtt = isPtt,
                 seqNum = seqNum
             )
@@ -160,6 +171,7 @@ data class TantraPacket(
 
         var flags = (langId and 0x0F)
         if (isEmergency) flags = flags or (FLAG_ALERT_EMERGENCY.toInt() and 0xFF)
+        if (isAlert) flags = flags or (FLAG_TACTICAL_ALERT.toInt() and 0xFF)
         if (isPtt) flags = flags or (FLAG_PTT_MODE.toInt() and 0xFF)
 
         val totalLen = 6 + payloadLen + 2

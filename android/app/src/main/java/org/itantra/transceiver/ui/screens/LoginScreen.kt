@@ -77,24 +77,29 @@ fun LoginScreen(
     val photoFile = remember { File(context.filesDir, "profile_photo.jpg") }
     var photoUri by remember { mutableStateOf<Uri?>(if (photoFile.exists()) Uri.fromFile(photoFile) else null) }
     var hasPhoto by remember { mutableStateOf(photoFile.exists()) }
+    var cropImageUri by remember { mutableStateOf<Uri?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            try {
-                context.contentResolver.openInputStream(it)?.use { input ->
-                    FileOutputStream(photoFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                photoUri = Uri.fromFile(photoFile)
-                hasPhoto = true
-                Toast.makeText(context, "Photo uploaded successfully", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(context, "Photo error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+            cropImageUri = it
         }
+    }
+
+    if (cropImageUri != null) {
+        ImageCropDialog(
+            sourceUri = cropImageUri!!,
+            onCropSuccess = { croppedFile ->
+                photoUri = Uri.fromFile(croppedFile)
+                hasPhoto = true
+                cropImageUri = null
+                Toast.makeText(context, "Profile photo cropped and saved", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = {
+                cropImageUri = null
+            }
+        )
     }
 
     Column(

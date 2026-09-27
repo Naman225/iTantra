@@ -63,14 +63,17 @@ class MainActivity : ComponentActivity() {
     private var pendingLangId = 0
     private var pendingOnSent: ((TantraPacket) -> Unit)? = null
 
-    // Emergency keyword detection lists
-    private val emergencyKeywordsEn = listOf(
-        "alert", "emergency", "sos", "help", "mayday", "danger",
-        "evacuate", "flood", "fire", "rescue", "distress"
+    // 3-Tier Keyword Detection: Red SOS vs Yellow Alert
+    private val sosKeywords = listOf(
+        "sos", "help", "emergency", "mayday", "distress", "evacuate",
+        "बचाओ", "आपातकालीन", "संकट", "मदद", "तुरंत", "सहायता",
+        "kaapadu", "kaapaathunga", "aabathu", "udhavi", "udane"
     )
-    private val emergencyKeywordsHi = listOf(
-        "आपातकालीन", "संकट", "बचाओ", "मदद", "खतरा", "बाढ़",
-        "आग", "तुरंत", "सहायता", "चेतावनी", "संकटकालीन"
+
+    private val alertKeywords = listOf(
+        "alert", "warning", "danger", "caution", "hazard",
+        "खतरा", "चेतावनी", "सावधान", "सतर्क",
+        "eccarikkai", "abaththukkuriyeedu", "kavanam", "abayam"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -160,33 +163,43 @@ class MainActivity : ComponentActivity() {
     private fun handleSpeechRecognitionResult(text: String, errorMsg: String? = null) {
         val onSent = pendingOnSent
         pendingOnSent = null
-        var isEmergency = pendingEmergency
+        val manualEmergency = pendingEmergency
         val selectedLangId = pendingLangId
 
         val trimmedText = text.trim()
         if (trimmedText.isNotBlank()) {
-            // Smart Voice Emergency Detection
             val lowerText = trimmedText.lowercase()
-            val isAutoEmergency = emergencyKeywordsEn.any { lowerText.contains(it) } ||
-                    emergencyKeywordsHi.any { trimmedText.contains(it) }
-            if (isAutoEmergency && !isEmergency) {
-                isEmergency = true
+
+            // 3-Tier Classification:
+            // Tier 1: Red SOS
+            val isAutoSos = sosKeywords.any { lowerText.contains(it) }
+            val isEmergency = manualEmergency || isAutoSos
+
+            // Tier 2: Yellow Alert (if not Red SOS)
+            val isAlert = if (isEmergency) false else alertKeywords.any { lowerText.contains(it) }
+
+            if (isEmergency && !manualEmergency) {
                 runOnUiThread {
-                    Toast.makeText(this, "⚠️ Emergency keyword detected — sending as SOS alert!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "🚨 Red SOS Distress triggered by voice keyword!", Toast.LENGTH_SHORT).show()
+                }
+            } else if (isAlert) {
+                runOnUiThread {
+                    Toast.makeText(this, "⚠️ Yellow Tactical Alert triggered by voice keyword!", Toast.LENGTH_SHORT).show()
                 }
             }
 
             val detected = TantraPacket.detectLanguage(trimmedText)
-            val langToUse = if (selectedLangId == 0 || selectedLangId == 1) {
-                if (detected == 1 || detected == 0) detected else selectedLangId
-            } else {
+            val langToUse = if (selectedLangId == 0 || selectedLangId == 1 || selectedLangId == 6) {
                 selectedLangId
+            } else {
+                if (detected in listOf(0, 1, 6)) detected else selectedLangId
             }
 
             val packet = TantraPacket(
                 text = trimmedText,
                 langId = langToUse,
                 isEmergency = isEmergency,
+                isAlert = isAlert,
                 isPtt = true,
                 seqNum = (1..65534).random()
             )
@@ -195,16 +208,17 @@ class MainActivity : ComponentActivity() {
             audioPlayer.playRogerBeep()
             runOnUiThread { onSent?.invoke(packet) }
         } else {
-            if (isEmergency) {
-                val emergencyText = if (selectedLangId == 1) {
-                    "Emergency SOS: Distress signal beacon activated!"
-                } else {
-                    "आपातकालीन संदेश: संकट संकेत सक्रिय किया गया तुरंत सहायता भेजें!"
+            if (manualEmergency) {
+                val emergencyText = when (selectedLangId) {
+                    1 -> "Emergency SOS: Distress beacon activated!"
+                    6 -> "ஆபத்து சிக்னல்: அவசர உதவி தேவை!"
+                    else -> "आपातकालीन संदेश: संकट संकेत सक्रिय किया गया तुरंत सहायता भेजें!"
                 }
                 val packet = TantraPacket(
                     text = emergencyText,
                     langId = selectedLangId,
                     isEmergency = true,
+                    isAlert = false,
                     isPtt = true,
                     seqNum = (1..65534).random()
                 )
@@ -228,15 +242,20 @@ class MainActivity : ComponentActivity() {
     ) {
         if (text.isBlank()) return
 
-        // Smart text emergency detection
         val lowerText = text.lowercase()
-        val isAutoEmergency = emergencyKeywordsEn.any { lowerText.contains(it) } ||
-                emergencyKeywordsHi.any { text.contains(it) }
-        val finalEmergency = isEmergency || isAutoEmergency
 
-        if (isAutoEmergency && !isEmergency) {
+        // 3-Tier Classification for Direct Text
+        val isAutoSos = sosKeywords.any { lowerText.contains(it) }
+        val finalEmergency = isEmergency || isAutoSos
+        val finalAlert = if (finalEmergency) false else alertKeywords.any { lowerText.contains(it) }
+
+        if (finalEmergency && !isEmergency) {
             runOnUiThread {
-                Toast.makeText(this, "⚠️ Emergency keyword detected — sending as SOS alert!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "🚨 Red SOS Distress triggered by keyword!", Toast.LENGTH_SHORT).show()
+            }
+        } else if (finalAlert) {
+            runOnUiThread {
+                Toast.makeText(this, "⚠️ Yellow Tactical Alert triggered by keyword!", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -244,6 +263,7 @@ class MainActivity : ComponentActivity() {
             text = text.trim(),
             langId = langId,
             isEmergency = finalEmergency,
+            isAlert = finalAlert,
             isPtt = false,
             seqNum = (1..65534).random()
         )
@@ -285,7 +305,8 @@ fun ITantraApp(
             notificationHelper.showMessageNotification(
                 sender = "${packet.langName} Radio Unit",
                 message = packet.text,
-                isEmergency = packet.isEmergency
+                isEmergency = packet.isEmergency,
+                isAlert = packet.isAlert
             )
         }
     }

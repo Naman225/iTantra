@@ -95,7 +95,12 @@ class SpeechToTextManager(private val context: Context) {
     fun startListening(langId: Int, onResult: (text: String, errorMsg: String?) -> Unit) {
         mainHandler.post {
             try {
-                cleanupEngines()
+                // Cancel any prior active recognition session without destroying the warm instance
+                try {
+                    systemRecognizer?.cancel()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error cancelling prior recognition: ${e.message}")
+                }
 
                 _partialText.value = ""
                 lastCapturedText = ""
@@ -177,87 +182,95 @@ class SpeechToTextManager(private val context: Context) {
      * Starts Speech Recognizer using the device's native speech recognition engine.
      */
     private fun startAospOnDeviceListening(langId: Int) {
-        systemRecognizer = createAospSpeechRecognizer().apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    Log.i(TAG, "Speech engine ready for speech")
-                }
-
-                override fun onBeginningOfSpeech() {
-                    Log.i(TAG, "Voice input detected")
-                }
-
-                override fun onRmsChanged(rmsdB: Float) {
-                    val normalized = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
-                    _audioLevel.value = normalized
-                }
-
-                override fun onBufferReceived(buffer: ByteArray?) {}
-
-                override fun onEndOfSpeech() {
-                    Log.i(TAG, "End of speech segment")
-                    _audioLevel.value = 0f
-                    _isProcessing.value = true
-                }
-
-                override fun onError(error: Int) {
-                    val errorName = when (error) {
-                        SpeechRecognizer.ERROR_AUDIO -> "ERROR_AUDIO"
-                        SpeechRecognizer.ERROR_CLIENT -> "ERROR_CLIENT"
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "ERROR_INSUFFICIENT_PERMISSIONS"
-                        SpeechRecognizer.ERROR_NETWORK -> "ERROR_NETWORK"
-                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "ERROR_NETWORK_TIMEOUT"
-                        SpeechRecognizer.ERROR_NO_MATCH -> "ERROR_NO_MATCH"
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "ERROR_RECOGNIZER_BUSY"
-                        SpeechRecognizer.ERROR_SERVER -> "ERROR_SERVER"
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "ERROR_SPEECH_TIMEOUT"
-                        else -> "ERROR_CODE_$error"
-                    }
-                    Log.w(TAG, "Recognition error: $errorName ($error)")
-
-                    _audioLevel.value = 0f
-                    _isListening.value = false
-                    _isProcessing.value = false
-
-                    if (lastCapturedText.isNotBlank()) {
-                        deliverResult(lastCapturedText, null)
-                    } else {
-                        val friendlyMsg = when (error) {
-                            SpeechRecognizer.ERROR_NO_MATCH -> "No voice recognized. Hold the button and speak clearly."
-                            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Hold the button while speaking into your microphone."
-                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is required."
-                            SpeechRecognizer.ERROR_AUDIO -> "Microphone busy. Please try again."
-                            else -> "No speech detected. Hold button and speak."
-                        }
-                        deliverResult("", friendlyMsg)
-                    }
-                }
-
-                override fun onResults(results: Bundle?) {
-                    _audioLevel.value = 0f
-                    _isListening.value = false
-                    _isProcessing.value = false
-
-                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val recognized = matches?.firstOrNull { it.isNotBlank() } ?: lastCapturedText
-                    Log.i(TAG, "Recognition success: '$recognized'")
-                    deliverResult(recognized, null)
-                }
-
-                override fun onPartialResults(partialResults: Bundle?) {
-                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val partial = matches?.firstOrNull { it.isNotBlank() } ?: ""
-                    if (partial.isNotBlank()) {
-                        lastCapturedText = partial
-                        _partialText.value = partial
-                    }
-                }
-
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
+        if (systemRecognizer == null) {
+            systemRecognizer = createAospSpeechRecognizer()
         }
 
-        val langTag = if (langId == 1) "en-IN" else "hi-IN"
+        systemRecognizer?.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                Log.i(TAG, "Speech engine ready for speech")
+            }
+
+            override fun onBeginningOfSpeech() {
+                Log.i(TAG, "Voice input detected")
+            }
+
+            override fun onRmsChanged(rmsdB: Float) {
+                val normalized = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
+                _audioLevel.value = normalized
+            }
+
+            override fun onBufferReceived(buffer: ByteArray?) {}
+
+            override fun onEndOfSpeech() {
+                Log.i(TAG, "End of speech segment")
+                _audioLevel.value = 0f
+                _isProcessing.value = true
+            }
+
+            override fun onError(error: Int) {
+                val errorName = when (error) {
+                    SpeechRecognizer.ERROR_AUDIO -> "ERROR_AUDIO"
+                    SpeechRecognizer.ERROR_CLIENT -> "ERROR_CLIENT"
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "ERROR_INSUFFICIENT_PERMISSIONS"
+                    SpeechRecognizer.ERROR_NETWORK -> "ERROR_NETWORK"
+                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "ERROR_NETWORK_TIMEOUT"
+                    SpeechRecognizer.ERROR_NO_MATCH -> "ERROR_NO_MATCH"
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "ERROR_RECOGNIZER_BUSY"
+                    SpeechRecognizer.ERROR_SERVER -> "ERROR_SERVER"
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "ERROR_SPEECH_TIMEOUT"
+                    else -> "ERROR_CODE_$error"
+                }
+                Log.w(TAG, "Recognition error: $errorName ($error)")
+
+                _audioLevel.value = 0f
+                _isListening.value = false
+                _isProcessing.value = false
+
+                if (lastCapturedText.isNotBlank()) {
+                    deliverResult(lastCapturedText, null)
+                } else {
+                    val friendlyMsg = when (error) {
+                        SpeechRecognizer.ERROR_NO_MATCH -> "No voice recognized. Hold the button and speak clearly."
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Hold the button while speaking into your microphone."
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is required."
+                        SpeechRecognizer.ERROR_AUDIO -> "Microphone busy. Please try again."
+                        else -> "No speech detected. Hold button and speak."
+                    }
+                    deliverResult("", friendlyMsg)
+                }
+            }
+
+            override fun onResults(results: Bundle?) {
+                _audioLevel.value = 0f
+                _isListening.value = false
+                _isProcessing.value = false
+
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val recognized = matches?.firstOrNull { it.isNotBlank() } ?: lastCapturedText
+                Log.i(TAG, "Recognition success: '$recognized'")
+                deliverResult(recognized, null)
+            }
+
+            override fun onPartialResults(partialResults: Bundle?) {
+                val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val partial = matches?.firstOrNull { it.isNotBlank() } ?: ""
+                if (partial.isNotBlank()) {
+                    lastCapturedText = partial
+                    _partialText.value = partial
+                }
+            }
+
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+
+        val langTag = when (langId) {
+            0 -> "hi-IN"
+            1 -> "en-IN"
+            6 -> "ta-IN" // Tamil
+            else -> "hi-IN"
+        }
+
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, langTag)
@@ -266,6 +279,10 @@ class SpeechToTextManager(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
+            // Faster silence detection thresholds to speed up voice recognition pace
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 350L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 250L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 150L)
         }
 
         systemRecognizer?.startListening(intent)
@@ -295,11 +312,11 @@ class SpeechToTextManager(private val context: Context) {
                 _isListening.value = false
                 _isProcessing.value = true
 
-                if (elapsed < 350) {
+                if (elapsed < 200) {
                     Log.w(TAG, "Touch too brief: ${elapsed}ms")
                     mainHandler.postDelayed({
                         deliverResult("", "Hold the button while speaking")
-                    }, 200)
+                    }, 100)
                 } else {
                     if (voskSpeechService != null) {
                         voskSpeechService?.stop()

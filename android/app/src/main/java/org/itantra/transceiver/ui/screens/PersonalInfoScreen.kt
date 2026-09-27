@@ -46,7 +46,8 @@ private const val PHOTO_FILE_NAME = "profile_photo.jpg"
 
 @Composable
 fun PersonalInfoScreen(
-    onBackClick: (() -> Unit)? = null
+    onBackClick: (() -> Unit)? = null,
+    onLogout: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -323,6 +324,26 @@ fun PersonalInfoScreen(
                 Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Edit Profile Details", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Logout / Switch User Button to easily access Login Screen
+            OutlinedButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLogout?.invoke()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, SOSRed),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = SOSRed)
+            ) {
+                Icon(Icons.Default.ExitToApp, contentDescription = null, tint = SOSRed, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Log Out / Switch Account", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = SOSRed)
             }
         } else {
             // EDIT MODE

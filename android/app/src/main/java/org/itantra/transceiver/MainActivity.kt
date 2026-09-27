@@ -41,11 +41,12 @@ import org.itantra.transceiver.ui.screens.*
 
 // Navigation pages
 enum class NavPage(val title: String, val icon: ImageVector) {
-    HOME("Home", Icons.Default.Home),
-    CONNECT("Connect Device", Icons.Default.Wifi),
-    CONTACT("Contact Us", Icons.Default.Email),
-    PROFILE("Personal Info", Icons.Default.Person),
-    ABOUT("About", Icons.Default.Info)
+    HOME("Radio", Icons.Default.Mic),
+    DASHBOARD("Dashboard", Icons.Default.Dashboard),
+    CONNECT("Connect", Icons.Default.Wifi),
+    PROFILE("Profile & Login", Icons.Default.AccountCircle),
+    ABOUT("About", Icons.Default.Info),
+    CONTACT("Contact Us", Icons.Default.Email)
 }
 
 class MainActivity : ComponentActivity() {
@@ -452,10 +453,19 @@ fun ITantraApp(
                             }
                         },
                         actions = {
+                            // Direct User / Login button on top bar
+                            IconButton(onClick = { currentPage = NavPage.PROFILE }) {
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    contentDescription = "Profile & Login",
+                                    tint = PrimaryBlue,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
                             // Connection status dot
                             Box(
                                 modifier = Modifier
-                                    .padding(end = 16.dp)
+                                    .padding(end = 16.dp, start = 4.dp)
                                     .size(10.dp)
                                     .clip(CircleShape)
                                     .background(AccentGreen)
@@ -466,6 +476,42 @@ fun ITantraApp(
                             titleContentColor = PrimaryDark
                         )
                     )
+                },
+                bottomBar = {
+                    NavigationBar(
+                        containerColor = Color.White,
+                        tonalElevation = 6.dp
+                    ) {
+                        val bottomNavPages = listOf(NavPage.HOME, NavPage.DASHBOARD, NavPage.CONNECT, NavPage.PROFILE)
+                        bottomNavPages.forEach { page ->
+                            val isSelected = currentPage == page
+                            NavigationBarItem(
+                                icon = {
+                                    Icon(
+                                        imageVector = page.icon,
+                                        contentDescription = page.title,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = page.title,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                selected = isSelected,
+                                onClick = { currentPage = page },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = PrimaryBlue,
+                                    selectedTextColor = PrimaryBlue,
+                                    indicatorColor = PrimaryLight,
+                                    unselectedIconColor = TextSecondary,
+                                    unselectedTextColor = TextSecondary
+                                )
+                            )
+                        }
+                    }
                 },
                 containerColor = LightBackground
             ) { paddingValues ->
@@ -480,6 +526,21 @@ fun ITantraApp(
                             onStartPtt = onStartPtt,
                             onStopPtt = onStopPtt,
                             onSendDirectText = onSendDirectText
+                        )
+                        NavPage.DASHBOARD -> DashboardScreen(
+                            connectedPeers = connectedPeers,
+                            onSendPing = {
+                                val currentName = prefs.getString("name", "Operator") ?: "Operator"
+                                radio.sendBeaconPing(currentName)
+                            },
+                            onNavigateToRadio = { currentPage = NavPage.HOME },
+                            onNavigateToConnect = { currentPage = NavPage.CONNECT },
+                            onNavigateToProfile = { currentPage = NavPage.PROFILE },
+                            onNavigateToAbout = { currentPage = NavPage.ABOUT },
+                            onLogoutOrLogin = {
+                                prefs.edit().putBoolean("is_logged_in", false).apply()
+                                isLoggedIn = false
+                            }
                         )
                         NavPage.CONNECT -> ConnectDeviceScreen(
                             connectedPeers = connectedPeers,
@@ -497,9 +558,14 @@ fun ITantraApp(
                             onScanBt = { btTransceiver.startDiscovery(context) },
                             onConnectBt = { address -> btTransceiver.connectToDevice(address) }
                         )
-                        NavPage.CONTACT -> ContactUsScreen()
-                        NavPage.PROFILE -> PersonalInfoScreen()
+                        NavPage.PROFILE -> PersonalInfoScreen(
+                            onLogout = {
+                                prefs.edit().putBoolean("is_logged_in", false).apply()
+                                isLoggedIn = false
+                            }
+                        )
                         NavPage.ABOUT -> AboutScreen()
+                        NavPage.CONTACT -> ContactUsScreen()
                     }
                 }
             }

@@ -174,13 +174,13 @@ class SpeechToTextManager(private val context: Context) {
     }
 
     /**
-     * Starts AOSP Native On-Device Recognizer (zero proprietary Google cloud APIs).
+     * Starts Speech Recognizer using the device's native speech recognition engine.
      */
     private fun startAospOnDeviceListening(langId: Int) {
         systemRecognizer = createAospSpeechRecognizer().apply {
             setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
-                    Log.i(TAG, "AOSP STT Engine ready for speech")
+                    Log.i(TAG, "Speech engine ready for speech")
                 }
 
                 override fun onBeginningOfSpeech() {
@@ -265,26 +265,21 @@ class SpeechToTextManager(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, langTag)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true) // Force offline processing
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
         }
 
         systemRecognizer?.startListening(intent)
-        Log.i(TAG, "Started AOSP offline listening with language: $langTag")
+        Log.i(TAG, "Started speech recognition with language: $langTag")
     }
 
     /**
-     * Creates native AOSP SpeechRecognizer.
-     * Uses on-device recognition API on Android 13+ (API 33+) or standard system recognizer.
-     * Completely free of any proprietary Google service bindings.
+     * Creates system SpeechRecognizer using the device's default speech service.
      */
     private fun createAospSpeechRecognizer(): SpeechRecognizer {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && 
-                   SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
-            Log.i(TAG, "Using Android 13+ AOSP On-Device SpeechRecognizer")
-            SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-        } else {
-            Log.i(TAG, "Using standard AOSP System SpeechRecognizer (Offline-Preferred)")
+        return try {
+            SpeechRecognizer.createSpeechRecognizer(context)
+        } catch (e: Exception) {
+            Log.w(TAG, "Fallback to default SpeechRecognizer: ${e.message}")
             SpeechRecognizer.createSpeechRecognizer(context)
         }
     }

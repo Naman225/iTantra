@@ -5,55 +5,20 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,382 +26,413 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import java.io.File
+import java.io.FileOutputStream
 
 private const val PREFS_NAME = "itantra_profile"
 private const val PHOTO_FILE_NAME = "profile_photo.jpg"
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PersonalInfoScreen(
-    onBackClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onBackClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val focusManager = LocalFocusManager.current
+    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
 
-    // State for form fields
-    var fullName by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
-    var emailAddress by remember { mutableStateOf("") }
-    var organization by remember { mutableStateOf("") }
-    var hasPhoto by remember { mutableStateOf(false) }
-    var photoTimestamp by remember { mutableLongStateOf(0L) }
+    // Loaded profile values
+    var name by remember { mutableStateOf(prefs.getString("name", "Naman Tiwari") ?: "Naman Tiwari") }
+    var phone by remember { mutableStateOf(prefs.getString("phone", "9205917214") ?: "9205917214") }
+    var email by remember { mutableStateOf(prefs.getString("email", "namantiwari2384@gmail.com") ?: "namantiwari2384@gmail.com") }
+    var org by remember { mutableStateOf(prefs.getString("org", "Disaster Response / SIH 2026") ?: "Disaster Response / SIH 2026") }
+    var hasPhoto by remember { mutableStateOf(prefs.getBoolean("has_photo", false)) }
 
-    val profilePhotoFile = remember(photoTimestamp) {
-        File(context.filesDir, PHOTO_FILE_NAME)
-    }
+    // Edit mode toggle
+    var isEditing by remember { mutableStateOf(false) }
+
+    // Temporary editing values
+    var editName by remember { mutableStateOf(name) }
+    var editPhone by remember { mutableStateOf(phone) }
+    var editEmail by remember { mutableStateOf(email) }
+    var editOrg by remember { mutableStateOf(org) }
+
+    val photoFile = remember { File(context.filesDir, PHOTO_FILE_NAME) }
+    var photoUri by remember { mutableStateOf<Uri?>(if (photoFile.exists()) Uri.fromFile(photoFile) else null) }
 
     // Image Picker Launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if (uri != null) {
+        uri?.let {
             try {
-                val targetFile = File(context.filesDir, PHOTO_FILE_NAME)
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    targetFile.outputStream().use { outputStream ->
-                        inputStream.copyTo(outputStream)
+                context.contentResolver.openInputStream(it)?.use { input ->
+                    FileOutputStream(photoFile).use { output ->
+                        input.copyTo(output)
                     }
                 }
+                photoUri = Uri.fromFile(photoFile)
                 hasPhoto = true
-                photoTimestamp = System.currentTimeMillis()
-
-                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 prefs.edit().putBoolean("has_photo", true).apply()
+                Toast.makeText(context, "Photo updated successfully", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Failed to save selected photo: ${e.localizedMessage ?: "Unknown error"}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "Failed to save photo: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Load persisted profile data on launch
-    LaunchedEffect(Unit) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        fullName = prefs.getString("name", "") ?: ""
-        phoneNumber = prefs.getString("phone", "") ?: ""
-        emailAddress = prefs.getString("email", "") ?: ""
-        organization = prefs.getString("org", "") ?: ""
+    val scrollState = rememberScrollState()
 
-        val savedPhotoFile = File(context.filesDir, PHOTO_FILE_NAME)
-        hasPhoto = prefs.getBoolean("has_photo", false) && savedPhotoFile.exists()
-        if (hasPhoto) {
-            photoTimestamp = savedPhotoFile.lastModified()
-        }
-    }
-
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = LightBackground,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Personal Information",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextDark
-                    )
-                },
-                navigationIcon = {
-                    if (onBackClick != null) {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Navigate Back",
-                                tint = TextDark
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = CardWhite
-                )
-            )
-        }
-    ) { paddingValues ->
-        val scrollState = rememberScrollState()
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp, vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LightBackground)
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Top Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile image section at top center
+            Text(
+                text = if (isEditing) "Edit Profile" else "Personal Info",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark
+            )
+
+            if (!isEditing) {
+                Button(
+                    onClick = {
+                        editName = name
+                        editPhone = phone
+                        editEmail = email
+                        editOrg = org
+                        isEditing = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Edit", color = PrimaryDark, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Avatar Profile Photo
+        Box(
+            modifier = Modifier.size(110.dp),
+            contentAlignment = Alignment.BottomEnd
+        ) {
             Box(
                 modifier = Modifier
-                    .size(136.dp)
-                    .padding(8.dp),
+                    .size(110.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, PrimaryBlue, CircleShape)
+                    .background(SurfaceGray),
                 contentAlignment = Alignment.Center
             ) {
-                // Circular 120dp avatar container
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .shadow(4.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(SurfaceGray)
-                        .border(2.dp, PrimaryBlue.copy(alpha = 0.25f), CircleShape)
-                        .clickable { imagePickerLauncher.launch("image/*") },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (hasPhoto && profilePhotoFile.exists()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(profilePhotoFile)
-                                .memoryCacheKey("${profilePhotoFile.absolutePath}_$photoTimestamp")
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Profile Photo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Profile Photo Placeholder",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(64.dp)
-                        )
-                    }
-                }
-
-                // Small camera icon overlay at bottom-right of the circle
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(38.dp)
-                        .shadow(3.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(PrimaryBlue)
-                        .border(2.dp, CardWhite, CircleShape)
-                        .clickable { imagePickerLauncher.launch("image/*") },
-                    contentAlignment = Alignment.Center
-                ) {
+                if (hasPhoto && photoFile.exists()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(photoFile)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Profile Photo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
                     Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Change Profile Picture",
-                        tint = CardWhite,
-                        modifier = Modifier.size(18.dp)
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Default Avatar",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(54.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            // Camera upload icon overlay (active in edit mode or clickable)
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryBlue)
+                    .clickable { imagePickerLauncher.launch("image/*") },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Upload Photo",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (!isEditing) {
+            // VIEW MODE: Clean Application Profile Cards
             Text(
-                text = if (fullName.isNotBlank()) fullName else "Operator Profile",
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
+                text = name,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
                 color = TextDark
             )
 
             Text(
-                text = if (organization.isNotBlank()) organization else "iTantra Transceiver Network",
+                text = org,
                 fontSize = 13.sp,
                 color = TextSecondary
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            // Form fields container
+            // Active Badge
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AccentGreen.copy(alpha = 0.12f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(AccentGreen)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "ACTIVE RESPONDER",
+                    color = AccentGreen,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Profile Details Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = CardWhite),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                shape = RoundedCornerShape(14.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Full Name Field
-                    OutlinedTextField(
-                        value = fullName,
-                        onValueChange = { fullName = it },
-                        label = { Text("Full Name") },
-                        placeholder = { Text("e.g. Capt. Rajesh Sharma") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = PrimaryBlue
-                            )
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next
-                        ),
-                        colors = outlinedTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "ACCOUNT DETAILS",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary,
+                        letterSpacing = 0.5.sp
                     )
 
-                    // Phone Number Field
-                    OutlinedTextField(
-                        value = phoneNumber,
-                        onValueChange = { phoneNumber = it },
-                        label = { Text("Phone Number") },
-                        placeholder = { Text("+91 98765 43210") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = null,
-                                tint = PrimaryBlue
-                            )
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Phone,
-                            imeAction = ImeAction.Next
-                        ),
-                        colors = outlinedTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    ProfileDetailRow(
+                        icon = Icons.Default.Phone,
+                        label = "Phone Number",
+                        value = phone
                     )
 
-                    // Email Address Field
-                    OutlinedTextField(
-                        value = emailAddress,
-                        onValueChange = { emailAddress = it },
-                        label = { Text("Email Address") },
-                        placeholder = { Text("operator@itantra.in") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Email,
-                                contentDescription = null,
-                                tint = PrimaryBlue
-                            )
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next
-                        ),
-                        colors = outlinedTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = SurfaceGray)
+
+                    ProfileDetailRow(
+                        icon = Icons.Default.Email,
+                        label = "Email Address",
+                        value = email
                     )
 
-                    // Organization / Unit Field
-                    OutlinedTextField(
-                        value = organization,
-                        onValueChange = { organization = it },
-                        label = { Text("Organization / Unit") },
-                        placeholder = { Text("e.g. Rapid Action Battalion / Signal Corps") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Business,
-                                contentDescription = null,
-                                tint = PrimaryBlue
-                            )
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = { focusManager.clearFocus() }
-                        ),
-                        colors = outlinedTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = SurfaceGray)
+
+                    ProfileDetailRow(
+                        icon = Icons.Default.Business,
+                        label = "Unit / Sector",
+                        value = org
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = SurfaceGray)
+
+                    ProfileDetailRow(
+                        icon = Icons.Default.Radio,
+                        label = "Radio Call Sign",
+                        value = name.replace(" ", "-").uppercase()
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Save Profile Button
+            // Big Edit Profile Button
             Button(
                 onClick = {
-                    focusManager.clearFocus()
-                    val targetFile = File(context.filesDir, PHOTO_FILE_NAME)
-                    val photoExists = hasPhoto && targetFile.exists()
-
-                    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                    prefs.edit()
-                        .putString("name", fullName.trim())
-                        .putString("phone", phoneNumber.trim())
-                        .putString("email", emailAddress.trim())
-                        .putString("org", organization.trim())
-                        .putBoolean("has_photo", photoExists)
-                        .apply()
-
-                    Toast.makeText(context, "Profile saved successfully", Toast.LENGTH_SHORT).show()
+                    editName = name
+                    editPhone = phone
+                    editEmail = email
+                    editOrg = org
+                    isEditing = true
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryBlue,
-                    contentColor = CardWhite
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Save Profile",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("Edit Profile Details", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        } else {
+            // EDIT MODE: Editable Form Fields
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = CardWhite),
+                shape = RoundedCornerShape(14.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "EDIT PROFILE INFORMATION",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary,
+                        letterSpacing = 0.5.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Full Name / Call Sign") },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryBlue) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = editPhone,
+                        onValueChange = { editPhone = it },
+                        label = { Text("Phone Number") },
+                        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = PrimaryBlue) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = editEmail,
+                        onValueChange = { editEmail = it },
+                        label = { Text("Email Address") },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = PrimaryBlue) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = editOrg,
+                        onValueChange = { editOrg = it },
+                        label = { Text("Organization / Unit") },
+                        leadingIcon = { Icon(Icons.Default.Business, contentDescription = null, tint = PrimaryBlue) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Save and Cancel Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { isEditing = false },
+                    modifier = Modifier.weight(1f).height(46.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, Color(0xFFD1D5DB))
+                ) {
+                    Text("Cancel", color = TextDark)
+                }
+
+                Button(
+                    onClick = {
+                        name = editName.trim()
+                        phone = editPhone.trim()
+                        email = editEmail.trim()
+                        org = editOrg.trim()
+
+                        prefs.edit()
+                            .putString("name", name)
+                            .putString("phone", phone)
+                            .putString("email", email)
+                            .putString("org", org)
+                            .apply()
+
+                        isEditing = false
+                        Toast.makeText(context, "Profile saved successfully", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.weight(1f).height(46.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Save Changes", fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }
 
 @Composable
-private fun outlinedTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = PrimaryBlue,
-    unfocusedBorderColor = Color(0xFFD1D5DB),
-    focusedLabelColor = PrimaryBlue,
-    unfocusedLabelColor = TextSecondary,
-    cursorColor = PrimaryBlue,
-    focusedLeadingIconColor = PrimaryBlue,
-    unfocusedLeadingIconColor = TextSecondary,
-    focusedTextColor = TextDark,
-    unfocusedTextColor = TextDark,
-    focusedContainerColor = CardWhite,
-    unfocusedContainerColor = CardWhite
-)
-
-@Preview(showBackground = true)
-@Composable
-private fun PersonalInfoScreenPreview() {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = LightBackground
-    ) {
-        PersonalInfoScreen()
+fun ProfileDetailRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(PrimaryLight),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(text = label, fontSize = 11.sp, color = TextSecondary)
+            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextDark)
+        }
     }
 }

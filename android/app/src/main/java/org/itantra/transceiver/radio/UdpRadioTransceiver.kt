@@ -7,13 +7,22 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.itantra.transceiver.protocol.TantraPacket
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+
+data class AirlinkPeer(
+    val name: String,
+    val ip: String,
+    val lastSeenMs: Long = System.currentTimeMillis()
+)
 
 /**
  * High-speed, zero-infrastructure UDP Radio Transceiver.
@@ -37,10 +46,14 @@ class UdpRadioTransceiver(
     private var multicastLock: WifiManager.MulticastLock? = null
 
     var echoSelfPackets: Boolean = false
+    var currentUserName: String = "Operator"
     private val localSentSeqNums = java.util.Collections.synchronizedSet(LinkedHashSet<Int>())
 
     private val _incomingPackets = MutableSharedFlow<TantraPacket>(extraBufferCapacity = 64)
     val incomingPackets: SharedFlow<TantraPacket> = _incomingPackets.asSharedFlow()
+
+    private val _connectedPeers = MutableStateFlow<List<AirlinkPeer>>(emptyList())
+    val connectedPeers: StateFlow<List<AirlinkPeer>> = _connectedPeers.asStateFlow()
 
     /**
      * Starts listening for incoming packets on the local radio channel.
@@ -50,7 +63,6 @@ class UdpRadioTransceiver(
         isRunning = true
 
         try {
-            // Acquire MulticastLock so Android doesn't filter broadcast packets
             val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
             multicastLock = wifi?.createMulticastLock("iTantraMulticastLock")?.apply {
                 setReferenceCounted(true)
@@ -68,18 +80,39 @@ class UdpRadioTransceiver(
                 val buffer = ByteArray(65535)
                 while (isRunning) {
                     try {
-                        val packet = DatagramPacket(buffer, buffer.size)
-                        socket?.receive(packet)
+                        val datagram = DatagramPacket(buffer, buffer.size)
+                        socket?.receive(datagram)
 
-                        val rawData = buffer.copyOf(packet.length)
+                        val senderIp = datagram.address?.hostAddress ?: "Unknown"
+                        val rawData = buffer.copyOf(datagram.length)
+
                         try {
                             val decoded = TantraPacket.decode(rawData)
                             val isSelf = localSentSeqNums.contains(decoded.seqNum)
+
                             if (isSelf && !echoSelfPackets) {
-                                Log.d(TAG, "Filtering self broadcast echo seq #${decoded.seqNum}")
+                                // Ignore self loopback
                             } else {
-                                Log.d(TAG, "Received packet seq #${decoded.seqNum}: ${decoded.text}")
-                                _incomingPackets.emit(decoded)
+                                // Peer discovery beacon handling
+                                if (decoded.text.startsWith("BEACON_PING|")) {
+                                    val peerName = decoded.text.removePrefix("BEACON_PING|").trim()
+                                    if (!isSelf) {
+                                        updatePeer(peerName, senderIp)
+                                        sendBeaconPong(currentUserName)
+                                    }
+                                } else if (decoded.text.startsWith("BEACON_PONG|")) {
+                                    val peerName = decoded.text.removePrefix("BEACON_PONG|").trim()
+                                    if (!isSelf) {
+                                        updatePeer(peerName, senderIp)
+                                    }
+                                } else {
+                                    // Normal voice or message packet
+                                    if (!isSelf) {
+                                        updatePeer("Radio Unit ($senderIp)", senderIp)
+                                    }
+                                    Log.d(TAG, "Received packet seq #${decoded.seqNum} from $senderIp: ${decoded.text}")
+                                    _incomingPackets.emit(decoded)
+                                }
                             }
                         } catch (e: Exception) {
                             Log.w(TAG, "Failed to decode incoming radio packet: ${e.message}")
@@ -94,6 +127,58 @@ class UdpRadioTransceiver(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start UDP transceiver socket: ${e.message}")
         }
+    }
+
+    private fun updatePeer(name: String, ip: String) {
+        val currentList = _connectedPeers.value.toMutableList()
+        val index = currentList.indexOfFirst { it.ip == ip }
+        val peer = AirlinkPeer(name = name.ifBlank { "Radio ($ip)" }, ip = ip)
+        if (index >= 0) {
+            currentList[index] = peer
+        } else {
+            currentList.add(0, peer)
+        }
+        _connectedPeers.value = currentList
+    }
+
+    /**
+     * Broadcasts discovery beacon to all other iTantra radios on this Wi-Fi / Hotspot.
+     */
+    fun sendBeaconPing(userName: String) {
+        currentUserName = userName
+        val packet = TantraPacket(
+            text = "BEACON_PING|$userName",
+            langId = 1,
+            isEmergency = false,
+            isPtt = false,
+            seqNum = (1..65534).random()
+        )
+        transmit(packet)
+    }
+
+    private fun sendBeaconPong(userName: String) {
+        val packet = TantraPacket(
+            text = "BEACON_PONG|$userName",
+            langId = 1,
+            isEmergency = false,
+            isPtt = false,
+            seqNum = (1..65534).random()
+        )
+        transmit(packet)
+    }
+
+    /**
+     * Sends a direct audio chime ping to verify audio link on all connected devices.
+     */
+    fun sendTestChime(userName: String) {
+        val packet = TantraPacket(
+            text = "RADIO SIGNAL CHECK: Airlink verified loud and clear from $userName",
+            langId = 1,
+            isEmergency = false,
+            isPtt = false,
+            seqNum = (1..65534).random()
+        )
+        transmit(packet)
     }
 
     /**

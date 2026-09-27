@@ -1,6 +1,7 @@
 package org.itantra.transceiver
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,7 +9,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,9 +73,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val prefs = getSharedPreferences("itantra_profile", Context.MODE_PRIVATE)
+        val initialName = prefs.getString("name", "Operator") ?: "Operator"
+
         // Initialize Core Engines
         radioTransceiver = UdpRadioTransceiver(this).apply {
             echoSelfPackets = true
+            currentUserName = initialName
         }
         audioPlayer = AudioPlayerManager()
         alertManager = EmergencyAlertManager(this)
@@ -258,161 +263,216 @@ fun ITantraApp(
     onStopPtt: (Boolean, Int, (TantraPacket) -> Unit) -> Unit,
     onSendDirectText: (String, Int, Boolean, (TantraPacket) -> Unit) -> Unit
 ) {
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    var currentPage by remember { mutableStateOf(NavPage.HOME) }
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("itantra_profile", Context.MODE_PRIVATE) }
+    var isLoggedIn by remember { mutableStateOf(prefs.getBoolean("is_logged_in", false)) }
 
-    // Bluetooth state
-    val btDevices by btTransceiver.discoveredDevices.collectAsState()
-    val isBtScanning by btTransceiver.isScanning.collectAsState()
-    val connectedBtDevice by btTransceiver.connectedDeviceName.collectAsState()
+    if (!isLoggedIn) {
+        // App starts with Login Screen
+        LoginScreen(
+            onLoginSuccess = { name, unit ->
+                prefs.edit()
+                    .putString("name", name)
+                    .putString("org", unit)
+                    .putBoolean("is_logged_in", true)
+                    .apply()
+                radio.currentUserName = name
+                isLoggedIn = true
+            },
+            onContinueAsGuest = {
+                prefs.edit()
+                    .putString("name", "Guest User")
+                    .putBoolean("is_logged_in", true)
+                    .apply()
+                radio.currentUserName = "Guest User"
+                isLoggedIn = true
+            }
+        )
+    } else {
+        // Main Application with Navigation Drawer
+        val drawerState = rememberDrawerState(DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
+        var currentPage by remember { mutableStateOf(NavPage.HOME) }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.width(300.dp),
-                drawerContainerColor = Color.White
-            ) {
-                // Drawer Header
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(PrimaryBlue)
-                        .padding(24.dp)
+        // Live state
+        val btDevices by btTransceiver.discoveredDevices.collectAsState()
+        val isBtScanning by btTransceiver.isScanning.collectAsState()
+        val connectedBtDevice by btTransceiver.connectedDeviceName.collectAsState()
+        val connectedPeers by radio.connectedPeers.collectAsState()
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier.width(300.dp),
+                    drawerContainerColor = Color.White
                 ) {
-                    Text(
-                        text = "iTantra",
-                        color = Color.White,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Smart Voice Transceiver",
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            val prefs = context.getSharedPreferences("itantra_profile", android.content.Context.MODE_PRIVATE)
-                            val userName = prefs.getString("name", "User") ?: "User"
-                            Text(text = userName, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                            Text(text = "Online", color = AccentGreen, fontSize = 12.sp)
+                    // Drawer Header
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(PrimaryBlue)
+                            .padding(24.dp)
+                    ) {
+                        Text(
+                            text = "iTantra",
+                            color = Color.White,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Smart Voice Transceiver",
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                val userName = prefs.getString("name", "User") ?: "User"
+                                Text(text = userName, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Text(text = "Online • Airlink Ready", color = AccentGreen, fontSize = 12.sp)
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // Navigation Items
-                NavPage.entries.forEach { page ->
-                    val isSelected = currentPage == page
+                    // Navigation Items
+                    NavPage.entries.forEach { page ->
+                        val isSelected = currentPage == page
+                        NavigationDrawerItem(
+                            icon = { Icon(page.icon, contentDescription = null) },
+                            label = { Text(page.title, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                            selected = isSelected,
+                            onClick = {
+                                currentPage = page
+                                scope.launch { drawerState.close() }
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                selectedContainerColor = PrimaryLight,
+                                selectedIconColor = PrimaryBlue,
+                                selectedTextColor = PrimaryBlue,
+                                unselectedIconColor = TextSecondary,
+                                unselectedTextColor = TextDark
+                            ),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = SurfaceGray)
+
+                    // Log Out / Switch User Option
                     NavigationDrawerItem(
-                        icon = { Icon(page.icon, contentDescription = null) },
-                        label = { Text(page.title, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal) },
-                        selected = isSelected,
+                        icon = { Icon(Icons.Default.ExitToApp, contentDescription = null, tint = SOSRed) },
+                        label = { Text("Log Out / Switch User", color = SOSRed, fontWeight = FontWeight.Medium) },
+                        selected = false,
                         onClick = {
-                            currentPage = page
+                            prefs.edit().putBoolean("is_logged_in", false).apply()
+                            isLoggedIn = false
                             scope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = PrimaryLight,
-                            selectedIconColor = PrimaryBlue,
-                            selectedTextColor = PrimaryBlue,
-                            unselectedIconColor = TextSecondary,
-                            unselectedTextColor = TextDark
+                            unselectedContainerColor = Color.Transparent,
+                            unselectedIconColor = SOSRed,
+                            unselectedTextColor = SOSRed
                         ),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
                         shape = RoundedCornerShape(12.dp)
                     )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Footer
+                    Text(
+                        text = "Made with ❤️ in India • SIH 2026",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Footer
-                Text(
-                    text = "Made with ❤\uFE0F in India",
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
             }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = if (currentPage == NavPage.HOME) "iTantra" else currentPage.title,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryDark,
-                            fontSize = 20.sp
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = if (currentPage == NavPage.HOME) "iTantra" else currentPage.title,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryDark,
+                                fontSize = 20.sp
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextDark)
+                            }
+                        },
+                        actions = {
+                            // Connection status dot
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 16.dp)
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(AccentGreen)
+                            )
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.White,
+                            titleContentColor = PrimaryDark
                         )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextDark)
-                        }
-                    },
-                    actions = {
-                        // Connection status dot
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(AccentGreen)
+                    )
+                },
+                containerColor = LightBackground
+            ) { paddingValues ->
+                Box(modifier = Modifier.padding(paddingValues)) {
+                    when (currentPage) {
+                        NavPage.HOME -> HomeScreen(
+                            radio = radio,
+                            audioPlayer = audioPlayer,
+                            alertManager = alertManager,
+                            ttsManager = ttsManager,
+                            sttManager = sttManager,
+                            onStartPtt = onStartPtt,
+                            onStopPtt = onStopPtt,
+                            onSendDirectText = onSendDirectText
                         )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.White,
-                        titleContentColor = PrimaryDark
-                    )
-                )
-            },
-            containerColor = LightBackground
-        ) { paddingValues ->
-            Box(modifier = Modifier.padding(paddingValues)) {
-                when (currentPage) {
-                    NavPage.HOME -> HomeScreen(
-                        radio = radio,
-                        audioPlayer = audioPlayer,
-                        alertManager = alertManager,
-                        ttsManager = ttsManager,
-                        sttManager = sttManager,
-                        onStartPtt = onStartPtt,
-                        onStopPtt = onStopPtt,
-                        onSendDirectText = onSendDirectText
-                    )
-                    NavPage.CONNECT -> ConnectDeviceScreen(
-                        isWifiListening = true,
-                        onToggleWifi = { /* WiFi is always listening via UDP */ },
-                        btDevices = btDevices,
-                        isBtScanning = isBtScanning,
-                        connectedBtDevice = connectedBtDevice,
-                        onScanBt = { btTransceiver.startDiscovery(context) },
-                        onConnectBt = { address -> btTransceiver.connectToDevice(address) }
-                    )
-                    NavPage.CONTACT -> ContactUsScreen()
-                    NavPage.PROFILE -> PersonalInfoScreen()
-                    NavPage.ABOUT -> AboutScreen()
+                        NavPage.CONNECT -> ConnectDeviceScreen(
+                            connectedPeers = connectedPeers,
+                            onScanAirlink = {
+                                val currentName = prefs.getString("name", "Operator") ?: "Operator"
+                                radio.sendBeaconPing(currentName)
+                            },
+                            onSendTestChime = {
+                                val currentName = prefs.getString("name", "Operator") ?: "Operator"
+                                radio.sendTestChime(currentName)
+                            },
+                            btDevices = btDevices,
+                            isBtScanning = isBtScanning,
+                            connectedBtDevice = connectedBtDevice,
+                            onScanBt = { btTransceiver.startDiscovery(context) },
+                            onConnectBt = { address -> btTransceiver.connectToDevice(address) }
+                        )
+                        NavPage.CONTACT -> ContactUsScreen()
+                        NavPage.PROFILE -> PersonalInfoScreen()
+                        NavPage.ABOUT -> AboutScreen()
+                    }
                 }
             }
         }

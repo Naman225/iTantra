@@ -180,6 +180,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startPttRecording(selectedLangId: Int) {
+        pendingLangId = selectedLangId
         sttManager.startListening(selectedLangId) { recognizedText, errorMsg ->
             handleSpeechRecognitionResult(recognizedText, errorMsg)
         }

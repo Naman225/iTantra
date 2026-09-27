@@ -107,30 +107,32 @@ class SpeechToTextManager(private val context: Context) {
      * @param langId 0=Hindi, 1=English, 2=Gujarati, 3=Marathi, 4=Kannada, 5=Malayalam, 6=Tamil, 7=Telugu, 8=Odia, 9=Bengali
      */
     fun startListening(langId: Int, onResult: (text: String, errorMsg: String?) -> Unit) {
+        onFinalResultCallback = onResult
+        startListeningSession(langId)
+    }
+
+    /**
+     * Initiates or restarts a listening session for the specified language.
+     */
+    private fun startListeningSession(langId: Int) {
         mainHandler.post {
             try {
-                // Cancel any prior active recognition session without destroying the warm instance
-                try {
-                    systemRecognizer?.cancel()
-                } catch (e: Exception) {
-                    Log.w(TAG, "Error cancelling prior recognition: ${e.message}")
-                }
+                resetSystemRecognizer()
 
                 _partialText.value = ""
                 lastCapturedText = ""
                 sessionStartTime = System.currentTimeMillis()
                 lastLangId = langId
-                onFinalResultCallback = onResult
                 _isListening.value = true
                 _isProcessing.value = false
 
                 if (isVoskLoaded && voskModel != null) {
                     startVoskListening()
                 } else {
-                    startAospOnDeviceListening(langId, preferOffline = true)
+                    startAospOnDeviceListening(langId)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to start offline STT: ${e.message}", e)
+                Log.e(TAG, "Failed to start STT: ${e.message}", e)
                 _isListening.value = false
                 _isProcessing.value = false
                 deliverResult("", "Voice engine initialization error: ${e.message}")
@@ -180,7 +182,7 @@ class SpeechToTextManager(private val context: Context) {
             Log.i(TAG, "Vosk offline ASR started listening")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start Vosk service, falling back to AOSP: ${e.message}")
-            startAospOnDeviceListening(0, preferOffline = true)
+            startAospOnDeviceListening(0)
         }
     }
 
@@ -194,13 +196,11 @@ class SpeechToTextManager(private val context: Context) {
     }
 
     /**
-     * Starts Speech Recognizer using the device's native speech recognition engine.
-     * With automatic fallback if an offline language model is not pre-cached on the device.
+     * Starts Speech Recognizer using the device's speech recognition engine.
      */
-    private fun startAospOnDeviceListening(langId: Int, preferOffline: Boolean = true) {
-        if (systemRecognizer == null) {
-            systemRecognizer = createAospSpeechRecognizer()
-        }
+    private fun startAospOnDeviceListening(langId: Int) {
+        resetSystemRecognizer()
+        systemRecognizer = createAospSpeechRecognizer()
 
         val langTag = when (langId) {
             0 -> "hi-IN" // Hindi
@@ -218,11 +218,11 @@ class SpeechToTextManager(private val context: Context) {
 
         systemRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
-                Log.i(TAG, "Speech engine ready for language: $langTag (offlinePreferred=$preferOffline)")
+                Log.i(TAG, "Speech engine ready for language: $langTag")
             }
 
             override fun onBeginningOfSpeech() {
-                Log.i(TAG, "Voice input detected")
+                Log.i(TAG, "Voice input detected ($langTag)")
             }
 
             override fun onRmsChanged(rmsdB: Float) {
@@ -234,7 +234,7 @@ class SpeechToTextManager(private val context: Context) {
             override fun onBufferReceived(buffer: ByteArray?) {}
 
             override fun onEndOfSpeech() {
-                Log.i(TAG, "End of speech segment")
+                Log.i(TAG, "End of speech segment ($langTag)")
                 _audioLevel.value = 0f
                 _isProcessing.value = true
             }
@@ -250,20 +250,15 @@ class SpeechToTextManager(private val context: Context) {
                     SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "ERROR_RECOGNIZER_BUSY"
                     SpeechRecognizer.ERROR_SERVER -> "ERROR_SERVER"
                     SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "ERROR_SPEECH_TIMEOUT"
+                    11 -> "ERROR_SERVER_DISCONNECTED"
+                    12 -> "ERROR_LANGUAGE_NOT_SUPPORTED"
+                    13 -> "ERROR_LANGUAGE_UNAVAILABLE"
+                    14 -> "ERROR_CANNOT_CHECK_SUPPORT"
                     else -> "ERROR_CODE_$error"
                 }
                 Log.w(TAG, "Recognition error on $langTag: $errorName ($error)")
 
-                // Resilient fallback: If offline package was demanded but missing on device, retry without strict offline flag
-                if (preferOffline && (error == SpeechRecognizer.ERROR_SERVER || error == SpeechRecognizer.ERROR_NETWORK || error == SpeechRecognizer.ERROR_CLIENT)) {
-                    Log.i(TAG, "Offline model not cached locally for $langTag, retrying with on-device speech service...")
-                    mainHandler.post {
-                        if (_isListening.value) {
-                            startAospOnDeviceListening(langId, preferOffline = false)
-                        }
-                    }
-                    return
-                }
+                resetSystemRecognizer()
 
                 _audioLevel.value = 0f
                 _isListening.value = false
@@ -277,6 +272,7 @@ class SpeechToTextManager(private val context: Context) {
                         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speak into your microphone."
                         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is required."
                         SpeechRecognizer.ERROR_AUDIO -> "Microphone busy. Please try again."
+                        12, 13 -> "Language $langTag is not available on this device's speech recognizer."
                         else -> "Could not detect voice. Please try again."
                     }
                     deliverResult("", friendlyMsg)
@@ -310,18 +306,30 @@ class SpeechToTextManager(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, langTag)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, langTag)
-            putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf(langTag, "hi-IN", "en-IN"))
+            if (langId == 1) {
+                // English: allow en-IN, en-US, en-GB variants
+                putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("en-IN", "en-US", "en-GB"))
+            }
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
-            // If offline is preferred and available on device, utilize it
-            if (preferOffline) {
-                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-            }
         }
 
         systemRecognizer?.startListening(intent)
-        Log.i(TAG, "Started speech recognition with language: $langTag (preferOffline=$preferOffline)")
+        Log.i(TAG, "Started speech recognition with language: $langTag")
+    }
+
+    /**
+     * Safely cancels and destroys system SpeechRecognizer instance.
+     */
+    private fun resetSystemRecognizer() {
+        try {
+            systemRecognizer?.cancel()
+            systemRecognizer?.destroy()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error destroying system recognizer: ${e.message}")
+        }
+        systemRecognizer = null
     }
 
     /**
@@ -382,11 +390,9 @@ class SpeechToTextManager(private val context: Context) {
         if (isPhoneMode && isAvailable()) {
             mainHandler.postDelayed({
                 if (isPhoneMode && !_isListening.value) {
-                    startListening(lastLangId) { nextText, nextErr ->
-                        deliverResult(nextText, nextErr)
-                    }
+                    startListeningSession(lastLangId)
                 }
-            }, 350)
+            }, 400)
         }
     }
 
@@ -399,12 +405,7 @@ class SpeechToTextManager(private val context: Context) {
         }
         voskSpeechService = null
 
-        try {
-            systemRecognizer?.destroy()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error destroying system recognizer: ${e.message}")
-        }
-        systemRecognizer = null
+        resetSystemRecognizer()
     }
 
     fun shutdown() {

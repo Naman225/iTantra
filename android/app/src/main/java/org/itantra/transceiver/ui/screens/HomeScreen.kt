@@ -1,6 +1,7 @@
 package org.itantra.transceiver.ui.screens
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.view.MotionEvent
 import android.widget.Toast
@@ -67,9 +68,10 @@ fun HomeScreen(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
+    val prefs = remember { context.getSharedPreferences("itantra_profile", Context.MODE_PRIVATE) }
     var isPttPressed by remember { mutableStateOf(false) }
     var isEmergencySos by remember { mutableStateOf(false) }
-    var selectedLangId by remember { mutableStateOf(0) }
+    var selectedLangId by remember { mutableStateOf(prefs.getInt("preferred_lang_id", 0)) }
     var directTextInput by remember { mutableStateOf("") }
     var showHowToDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -92,6 +94,7 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        selectedLangId = prefs.getInt("preferred_lang_id", selectedLangId)
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
@@ -964,6 +967,7 @@ fun HomeScreen(
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     selectedLangId = idx
+                                    prefs.edit().putInt("preferred_lang_id", idx).apply()
                                     showLanguageDialog = false
                                     Toast.makeText(context, "Switched to ${TantraPacket.LANG_NAMES[idx]}", Toast.LENGTH_SHORT).show()
                                 },

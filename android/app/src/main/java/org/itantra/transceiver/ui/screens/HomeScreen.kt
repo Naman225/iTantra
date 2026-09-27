@@ -31,10 +31,11 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -64,14 +65,17 @@ fun HomeScreen(
     onSendDirectText: (String, Int, Boolean, (TantraPacket) -> Unit) -> Unit
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     var isPttPressed by remember { mutableStateOf(false) }
     var isEmergencySos by remember { mutableStateOf(false) }
     var selectedLangId by remember { mutableStateOf(0) }
     var directTextInput by remember { mutableStateOf("") }
+    var showHowToDialog by remember { mutableStateOf(false) }
 
     val partialText by sttManager.partialText.collectAsState()
     val audioLevel by sttManager.audioLevel.collectAsState()
+    val isProcessing by sttManager.isProcessing.collectAsState()
 
     val messageLog = remember { mutableStateListOf<TransmissionItem>() }
 
@@ -79,7 +83,7 @@ fun HomeScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (!granted) {
-            Toast.makeText(context, "Microphone permission is required", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Microphone permission is required for voice", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -101,15 +105,27 @@ fun HomeScreen(
         }
     }
 
+    // Dynamic wave pulse animation
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isPttPressed) (1.04f + audioLevel * 0.12f) else 1f,
+        targetValue = if (isPttPressed) (1.08f + audioLevel * 0.18f) else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(350, easing = FastOutSlowInEasing),
+            animation = tween(300, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulseScale"
+    )
+
+    // Ripple wave ring animation
+    val rippleScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isPttPressed) 1.28f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(650, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rippleScale"
     )
 
     Column(
@@ -118,7 +134,7 @@ fun HomeScreen(
             .background(LightBackground)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // Language & SOS Control Row
+        // Control Bar: Language, SOS, Help Dialog
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardWhite),
@@ -128,49 +144,74 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Language selector
                 Button(
-                    onClick = { selectedLangId = (selectedLangId + 1) % 2 },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        selectedLangId = (selectedLangId + 1) % 2
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight),
                     shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.Language, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.Default.Language, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = TantraPacket.LANG_NAMES[selectedLangId],
                         color = PrimaryDark,
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 // SOS Emergency Toggle
                 Button(
-                    onClick = { isEmergencySos = !isEmergencySos },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        isEmergencySos = !isEmergencySos
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isEmergencySos) SOSRed else CardWhite
                     ),
                     border = BorderStroke(1.dp, if (isEmergencySos) SOSRed else Color(0xFFD1D5DB)),
                     shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         Icons.Default.Warning,
                         contentDescription = null,
                         tint = if (isEmergencySos) Color.White else SOSRed,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "SOS Emergency",
+                        text = "SOS",
                         color = if (isEmergencySos) Color.White else SOSRed,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // How to Interact Help Icon Button
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showHowToDialog = true
+                    },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryLight)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.HelpOutline,
+                        contentDescription = "Help Guide",
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -178,9 +219,9 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Live Speech Recognition Banner
+        // Live Speech Recognition Status Banner
         AnimatedVisibility(
-            visible = isPttPressed || partialText.isNotBlank(),
+            visible = isPttPressed || partialText.isNotBlank() || isProcessing,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
@@ -192,15 +233,23 @@ fun HomeScreen(
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(AccentGreen)
-                        )
+                        if (isProcessing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = PrimaryBlue,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(AccentGreen)
+                            )
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Live Transcription • ${TantraPacket.LANG_NAMES[selectedLangId]}",
+                            text = if (isProcessing) "Processing audio transcription…" else "Live Transcription (${TantraPacket.LANG_NAMES[selectedLangId]})",
                             color = PrimaryBlue,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
@@ -208,26 +257,48 @@ fun HomeScreen(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = if (partialText.isNotBlank()) "\"$partialText\"" else "Listening… speak now",
+                        text = when {
+                            partialText.isNotBlank() -> "\"$partialText\""
+                            isProcessing -> "Transcribing speech into data packet…"
+                            else -> "Listening… speak now"
+                        },
                         color = TextDark,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
             }
         }
 
-        // PTT Button Area
+        // PTT Button Area with Expanding Wave Ripple and Tactile Touch
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
             contentAlignment = Alignment.Center
         ) {
+            // Expanding concentric ripple waves during hold
+            if (isPttPressed) {
+                Box(
+                    modifier = Modifier
+                        .size(220.dp)
+                        .scale(rippleScale)
+                        .clip(CircleShape)
+                        .background((if (isEmergencySos) SOSRed else PrimaryBlue).copy(alpha = 0.15f))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(195.dp)
+                        .scale(pulseScale)
+                        .clip(CircleShape)
+                        .background((if (isEmergencySos) SOSRed else PrimaryBlue).copy(alpha = 0.28f))
+                )
+            }
+
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .size(170.dp)
+                        .size(165.dp)
                         .scale(pulseScale)
                         .shadow(
                             elevation = if (isPttPressed) 16.dp else 6.dp,
@@ -250,12 +321,14 @@ fun HomeScreen(
                         .pointerInteropFilter { motionEvent ->
                             when (motionEvent.action) {
                                 MotionEvent.ACTION_DOWN -> {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     isPttPressed = true
                                     onStartPtt(selectedLangId)
                                     true
                                 }
 
                                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     isPttPressed = false
                                     onStopPtt(isEmergencySos, selectedLangId) { sentPacket ->
                                         messageLog.add(0, TransmissionItem(sentPacket, isIncoming = false))
@@ -273,11 +346,15 @@ fun HomeScreen(
                             imageVector = if (isPttPressed) Icons.Default.Mic else Icons.Default.MicNone,
                             contentDescription = "Push to Talk",
                             tint = Color.White,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(46.dp)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (isPttPressed) "Transmitting…" else "Hold to Talk",
+                            text = when {
+                                isPttPressed -> "Transmitting…"
+                                isProcessing -> "Sending…"
+                                else -> "Hold to Talk"
+                            },
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -288,14 +365,14 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = if (isPttPressed) "Release to send" else "Press and hold to record",
+                    text = if (isPttPressed) "Release when done speaking" else "Press and hold to record",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
             }
         }
 
-        // Text Input Bar
+        // Direct Text Input Bar
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardWhite),
@@ -311,7 +388,7 @@ fun HomeScreen(
                 TextField(
                     value = directTextInput,
                     onValueChange = { directTextInput = it },
-                    placeholder = { Text("Type your message…", color = TextSecondary, fontSize = 14.sp) },
+                    placeholder = { Text("Type message…", color = TextSecondary, fontSize = 14.sp) },
                     modifier = Modifier.weight(1f),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = SurfaceGray,
@@ -327,6 +404,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         if (directTextInput.isNotBlank()) {
                             onSendDirectText(directTextInput, selectedLangId, isEmergencySos) { sentPacket ->
                                 messageLog.add(0, TransmissionItem(sentPacket, isIncoming = false))
@@ -339,19 +417,19 @@ fun HomeScreen(
                         .clip(CircleShape)
                         .background(PrimaryBlue)
                 ) {
-                    Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Message Log
+        // Message Traffic Log
         if (messageLog.isNotEmpty()) {
             Text(
-                text = "Messages",
+                text = "Messages (${messageLog.size})",
                 color = TextSecondary,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
@@ -359,7 +437,7 @@ fun HomeScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp)
+                    .height(130.dp)
             ) {
                 items(messageLog) { item ->
                     val isOutgoing = !item.isIncoming
@@ -373,7 +451,7 @@ fun HomeScreen(
                             modifier = Modifier.widthIn(max = 280.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = when {
-                                    item.packet.isEmergency -> SOSRed.copy(alpha = 0.1f)
+                                    item.packet.isEmergency -> SOSRed.copy(alpha = 0.12f)
                                     isOutgoing -> PrimaryLight
                                     else -> CardWhite
                                 }
@@ -429,6 +507,87 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+    }
+
+    // HOW TO INTERACT QUICK POP-UP DIALOG
+    if (showHowToDialog) {
+        AlertDialog(
+            onDismissRequest = { showHowToDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.HelpOutline, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "How to Use iTantra",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = TextDark
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    HowToGuideItem(
+                        icon = Icons.Default.Mic,
+                        title = "Hold to Talk",
+                        description = "Hold the big blue button, speak into your mic, and release to send your voice note."
+                    )
+
+                    HowToGuideItem(
+                        icon = Icons.Default.Keyboard,
+                        title = "Type Text Messages",
+                        description = "Or type your message in the bottom bar and tap the send arrow."
+                    )
+
+                    HowToGuideItem(
+                        icon = Icons.Default.Warning,
+                        title = "Emergency SOS",
+                        description = "Tap the SOS button or say words like 'Emergency', 'Alert', or 'आपातकालीन' to trigger an urgent alarm on all phones."
+                    )
+
+                    HowToGuideItem(
+                        icon = Icons.Default.Wifi,
+                        title = "Connect 2 Phones Without Internet",
+                        description = "Turn on 'Mobile Hotspot' on Phone 1, connect Phone 2 to its Wi-Fi, and both phones can talk peer-to-peer!"
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showHowToDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Got it, let's talk!", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            containerColor = CardWhite,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+}
+
+@Composable
+fun HowToGuideItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String
+) {
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(PrimaryLight),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column {
+            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextDark)
+            Text(text = description, fontSize = 12.sp, color = TextSecondary, lineHeight = 16.sp)
         }
     }
 }

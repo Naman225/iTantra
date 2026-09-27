@@ -31,6 +31,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import org.itantra.transceiver.audio.AudioPlayerManager
 import org.itantra.transceiver.emergency.EmergencyAlertManager
+import org.itantra.transceiver.emergency.NotificationHelper
 import org.itantra.transceiver.engine.SpeechToTextManager
 import org.itantra.transceiver.engine.TextToSpeechManager
 import org.itantra.transceiver.protocol.TantraPacket
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var ttsManager: TextToSpeechManager
     private lateinit var sttManager: SpeechToTextManager
     private lateinit var btTransceiver: BluetoothTransceiver
+    private lateinit var notificationHelper: NotificationHelper
 
     private var pendingEmergency = false
     private var pendingLangId = 0
@@ -77,6 +79,7 @@ class MainActivity : ComponentActivity() {
         val initialName = prefs.getString("name", "Operator") ?: "Operator"
 
         // Initialize Core Engines
+        notificationHelper = NotificationHelper(this)
         radioTransceiver = UdpRadioTransceiver(this).apply {
             echoSelfPackets = true
             currentUserName = initialName
@@ -90,7 +93,7 @@ class MainActivity : ComponentActivity() {
 
         radioTransceiver.startListening()
 
-        // Request permissions
+        // Request runtime permissions
         val permissionsToRequest = mutableListOf<String>()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
@@ -101,6 +104,11 @@ class MainActivity : ComponentActivity() {
             }
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -119,6 +127,7 @@ class MainActivity : ComponentActivity() {
                 ttsManager = ttsManager,
                 sttManager = sttManager,
                 btTransceiver = btTransceiver,
+                notificationHelper = notificationHelper,
                 onStartPtt = { langId -> startPttRecording(langId) },
                 onStopPtt = { isEmergency, selectedLangId, onSent ->
                     stopPttAndTransmit(isEmergency, selectedLangId, onSent)
@@ -131,8 +140,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startPttRecording(selectedLangId: Int) {
-        sttManager.startListening(selectedLangId) { recognizedText ->
-            handleSpeechRecognitionResult(recognizedText)
+        sttManager.startListening(selectedLangId) { recognizedText, errorMsg ->
+            handleSpeechRecognitionResult(recognizedText, errorMsg)
         }
     }
 
@@ -147,7 +156,7 @@ class MainActivity : ComponentActivity() {
         sttManager.stopListening()
     }
 
-    private fun handleSpeechRecognitionResult(text: String) {
+    private fun handleSpeechRecognitionResult(text: String, errorMsg: String? = null) {
         val onSent = pendingOnSent
         pendingOnSent = null
         var isEmergency = pendingEmergency
@@ -203,7 +212,8 @@ class MainActivity : ComponentActivity() {
                 runOnUiThread { onSent?.invoke(packet) }
             } else {
                 runOnUiThread {
-                    Toast.makeText(this, "No voice recognized. Hold the button and speak clearly.", Toast.LENGTH_SHORT).show()
+                    val msg = errorMsg ?: "No voice recognized. Hold the button and speak clearly."
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -259,6 +269,7 @@ fun ITantraApp(
     ttsManager: TextToSpeechManager,
     sttManager: SpeechToTextManager,
     btTransceiver: BluetoothTransceiver,
+    notificationHelper: NotificationHelper,
     onStartPtt: (Int) -> Unit,
     onStopPtt: (Boolean, Int, (TantraPacket) -> Unit) -> Unit,
     onSendDirectText: (String, Int, Boolean, (TantraPacket) -> Unit) -> Unit
@@ -267,14 +278,25 @@ fun ITantraApp(
     val prefs = remember { context.getSharedPreferences("itantra_profile", Context.MODE_PRIVATE) }
     var isLoggedIn by remember { mutableStateOf(prefs.getBoolean("is_logged_in", false)) }
 
+    // Listen for incoming radio packets and trigger system notifications
+    LaunchedEffect(Unit) {
+        radio.incomingPackets.collect { packet ->
+            notificationHelper.showMessageNotification(
+                sender = "${packet.langName} Radio Unit",
+                message = packet.text,
+                isEmergency = packet.isEmergency
+            )
+        }
+    }
+
     if (!isLoggedIn) {
         // App starts with 2-Step Login/Onboarding Screen
         LoginScreen(
-            onCompleteProfile = { phone, name, age, radioId ->
+            onCompleteProfile = { phone, name, dob, radioId ->
                 prefs.edit()
                     .putString("phone", phone)
                     .putString("name", name)
-                    .putString("age", age)
+                    .putString("dob", dob)
                     .putString("radio_id", radioId)
                     .putBoolean("is_logged_in", true)
                     .apply()
@@ -286,7 +308,7 @@ fun ITantraApp(
                 prefs.edit()
                     .putString("name", "Guest Operator")
                     .putString("phone", "9205917214")
-                    .putString("age", "25")
+                    .putString("dob", "01/01/2000")
                     .putString("radio_id", guestRadioId)
                     .putBoolean("is_logged_in", true)
                     .apply()

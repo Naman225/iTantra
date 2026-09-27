@@ -5,10 +5,13 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -22,10 +25,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -43,12 +49,13 @@ fun PersonalInfoScreen(
     onBackClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
 
     // Loaded profile values
     var name by remember { mutableStateOf(prefs.getString("name", "Naman Tiwari") ?: "Naman Tiwari") }
     var phone by remember { mutableStateOf(prefs.getString("phone", "9205917214") ?: "9205917214") }
-    var age by remember { mutableStateOf(prefs.getString("age", "21") ?: "21") }
+    var dob by remember { mutableStateOf(prefs.getString("dob", "15/08/2002") ?: "15/08/2002") }
     val radioId = remember { prefs.getString("radio_id", "ITANTRA-7249") ?: "ITANTRA-7249" }
     var hasPhoto by remember { mutableStateOf(prefs.getBoolean("has_photo", false)) }
 
@@ -58,7 +65,7 @@ fun PersonalInfoScreen(
     // Temporary editing values
     var editName by remember { mutableStateOf(name) }
     var editPhone by remember { mutableStateOf(phone) }
-    var editAge by remember { mutableStateOf(age) }
+    var editDob by remember { mutableStateOf(dob) }
 
     val photoFile = remember { File(context.filesDir, PHOTO_FILE_NAME) }
     var photoUri by remember { mutableStateOf<Uri?>(if (photoFile.exists()) Uri.fromFile(photoFile) else null) }
@@ -110,9 +117,10 @@ fun PersonalInfoScreen(
             if (!isEditing) {
                 Button(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         editName = name
                         editPhone = phone
-                        editAge = age
+                        editDob = dob
                         isEditing = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight),
@@ -266,9 +274,9 @@ fun PersonalInfoScreen(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = SurfaceGray)
 
                     ProfileDetailRow(
-                        icon = Icons.Default.Cake,
-                        label = "Age",
-                        value = "$age Years"
+                        icon = Icons.Default.CalendarToday,
+                        label = "Date of Birth",
+                        value = dob
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = SurfaceGray)
@@ -291,17 +299,24 @@ fun PersonalInfoScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Edit Profile Button
+            // Edit Profile Button with Touch Interaction
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, label = "edit_scale")
+
             Button(
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     editName = name
                     editPhone = phone
-                    editAge = age
+                    editDob = dob
                     isEditing = true
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(48.dp)
+                    .scale(scale),
+                interactionSource = interactionSource,
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 shape = RoundedCornerShape(10.dp)
             ) {
@@ -354,14 +369,21 @@ fun PersonalInfoScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedTextField(
-                        value = editAge,
+                        value = editDob,
                         onValueChange = { input ->
-                            if (input.length <= 3 && input.all { it.isDigit() }) {
-                                editAge = input
+                            val digitsOnly = input.filter { it.isDigit() }.take(8)
+                            val formatted = buildString {
+                                for (i in digitsOnly.indices) {
+                                    append(digitsOnly[i])
+                                    if ((i == 1 || i == 3) && i < digitsOnly.length - 1) {
+                                        append("/")
+                                    }
+                                }
                             }
+                            editDob = formatted
                         },
-                        label = { Text("Age") },
-                        leadingIcon = { Icon(Icons.Default.Cake, contentDescription = null, tint = PrimaryBlue) },
+                        label = { Text("Date of Birth (DD/MM/YYYY)") },
+                        leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
@@ -378,7 +400,10 @@ fun PersonalInfoScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedButton(
-                    onClick = { isEditing = false },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        isEditing = false
+                    },
                     modifier = Modifier.weight(1f).height(46.dp),
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, Color(0xFFD1D5DB))
@@ -388,14 +413,15 @@ fun PersonalInfoScreen(
 
                 Button(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         name = editName.trim()
                         phone = editPhone.trim()
-                        age = editAge.trim()
+                        dob = editDob.trim()
 
                         prefs.edit()
                             .putString("name", name)
                             .putString("phone", phone)
-                            .putString("age", age)
+                            .putString("dob", dob)
                             .apply()
 
                         isEditing = false

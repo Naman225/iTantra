@@ -1,7 +1,9 @@
 package org.itantra.transceiver.engine
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,13 +16,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Speech-To-Text Recognition Coordinator.
- * Interfaces with Android on-device SpeechRecognizer and Sherpa-ONNX/Vosk pipeline.
- * Converts live microphone speech in Hindi or English into real text transcripts.
+ * High-Reliability Speech-To-Text Recognition Coordinator.
+ * Optimized for Samsung One UI, Pixel, and all Android devices.
+ * Supports Hindi (hi-IN) and Indian English (en-IN).
  */
 class SpeechToTextManager(private val context: Context) {
     companion object {
         const val TAG = "iTantra-STT"
+        private const val GOOGLE_RECOGNITION_PACKAGE = "com.google.android.googlequicksearchbox"
+        private const val GOOGLE_RECOGNITION_SERVICE = "com.google.android.voicesearch.serviceapi.GoogleRecognitionService"
     }
 
     private var speechRecognizer: SpeechRecognizer? = null
@@ -29,43 +33,66 @@ class SpeechToTextManager(private val context: Context) {
     private val _isListening = MutableStateFlow(false)
     val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
 
+    private val _isProcessing = MutableStateFlow(false)
+    val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
+
     private val _audioLevel = MutableStateFlow(0f)
     val audioLevel: StateFlow<Float> = _audioLevel.asStateFlow()
 
     private val _partialText = MutableStateFlow("")
     val partialText: StateFlow<String> = _partialText.asStateFlow()
 
-    private var onFinalResultCallback: ((String) -> Unit)? = null
+    private var onFinalResultCallback: ((String, String?) -> Unit)? = null
     private var lastCapturedText = ""
+    private var sessionStartTime = 0L
 
     fun isAvailable(): Boolean {
         return SpeechRecognizer.isRecognitionAvailable(context)
     }
 
-    fun initModel(langCode: String): Boolean {
-        Log.i(TAG, "Initializing STT pipeline for $langCode. System speech available: ${isAvailable()}")
-        return true
+    /**
+     * Creates best available SpeechRecognizer for the device.
+     * Prefers Google Recognition Service for high Indic accuracy on Samsung.
+     */
+    private fun createBestSpeechRecognizer(): SpeechRecognizer {
+        return try {
+            val googleComp = ComponentName(GOOGLE_RECOGNITION_PACKAGE, GOOGLE_RECOGNITION_SERVICE)
+            val pm = context.packageManager
+            val intent = Intent("android.speech.RecognitionService").setComponent(googleComp)
+            val resolves = pm.queryIntentServices(intent, 0)
+            if (resolves.isNotEmpty()) {
+                Log.i(TAG, "Using Google Speech Recognition Service")
+                SpeechRecognizer.createSpeechRecognizer(context, googleComp)
+            } else {
+                Log.i(TAG, "Using default system SpeechRecognizer")
+                SpeechRecognizer.createSpeechRecognizer(context)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Fallback to default SpeechRecognizer: ${e.message}")
+            SpeechRecognizer.createSpeechRecognizer(context)
+        }
     }
 
     /**
-     * Starts listening to user speech using PTT hold.
-     * @param langId 0 = Hindi, 1 = English, etc.
+     * Starts listening to user speech.
+     * @param langId 0 = Hindi, 1 = English
      */
-    fun startListening(langId: Int, onResult: (String) -> Unit) {
+    fun startListening(langId: Int, onResult: (text: String, errorMsg: String?) -> Unit) {
         mainHandler.post {
             try {
-                // Clean up any existing recognizer session
                 cleanupRecognizer()
 
                 _partialText.value = ""
                 lastCapturedText = ""
+                sessionStartTime = System.currentTimeMillis()
                 onFinalResultCallback = onResult
                 _isListening.value = true
+                _isProcessing.value = false
 
-                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+                speechRecognizer = createBestSpeechRecognizer().apply {
                     setRecognitionListener(object : RecognitionListener {
                         override fun onReadyForSpeech(params: Bundle?) {
-                            Log.i(TAG, "ASR Engine ready for speech")
+                            Log.i(TAG, "STT Engine ready for speech")
                         }
 
                         override fun onBeginningOfSpeech() {
@@ -73,7 +100,6 @@ class SpeechToTextManager(private val context: Context) {
                         }
 
                         override fun onRmsChanged(rmsdB: Float) {
-                            // rmsdB typically ranges from -2 to +10 dB
                             val normalized = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
                             _audioLevel.value = normalized
                         }
@@ -83,6 +109,7 @@ class SpeechToTextManager(private val context: Context) {
                         override fun onEndOfSpeech() {
                             Log.i(TAG, "End of speech segment")
                             _audioLevel.value = 0f
+                            _isProcessing.value = true
                         }
 
                         override fun onError(error: Int) {
@@ -99,29 +126,39 @@ class SpeechToTextManager(private val context: Context) {
                                 else -> "ERROR_CODE_$error"
                             }
                             Log.w(TAG, "Recognition error: $errorName ($error)")
+
                             _audioLevel.value = 0f
                             _isListening.value = false
+                            _isProcessing.value = false
 
-                            // If we received any partial text before error, use that!
                             if (lastCapturedText.isNotBlank()) {
-                                deliverResult(lastCapturedText)
+                                deliverResult(lastCapturedText, null)
                             } else {
-                                deliverResult("")
+                                val friendlyMsg = when (error) {
+                                    SpeechRecognizer.ERROR_NO_MATCH -> "No voice recognized. Hold the button and speak clearly."
+                                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Hold the button while speaking into your microphone."
+                                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is required."
+                                    SpeechRecognizer.ERROR_AUDIO -> "Microphone busy. Please try again."
+                                    else -> "No speech detected. Hold button and speak."
+                                }
+                                deliverResult("", friendlyMsg)
                             }
                         }
 
                         override fun onResults(results: Bundle?) {
                             _audioLevel.value = 0f
                             _isListening.value = false
+                            _isProcessing.value = false
+
                             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                            val recognized = matches?.firstOrNull() ?: lastCapturedText
+                            val recognized = matches?.firstOrNull { it.isNotBlank() } ?: lastCapturedText
                             Log.i(TAG, "Recognition success: '$recognized'")
-                            deliverResult(recognized)
+                            deliverResult(recognized, null)
                         }
 
                         override fun onPartialResults(partialResults: Bundle?) {
                             val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                            val partial = matches?.firstOrNull() ?: ""
+                            val partial = matches?.firstOrNull { it.isNotBlank() } ?: ""
                             if (partial.isNotBlank()) {
                                 lastCapturedText = partial
                                 _partialText.value = partial
@@ -140,8 +177,7 @@ class SpeechToTextManager(private val context: Context) {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, langTag)
                     putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, langTag)
                     putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                    putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
                     putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
                 }
 
@@ -150,7 +186,8 @@ class SpeechToTextManager(private val context: Context) {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start SpeechRecognizer: ${e.message}", e)
                 _isListening.value = false
-                deliverResult("")
+                _isProcessing.value = false
+                deliverResult("", "Voice engine initialization error: ${e.message}")
             }
         }
     }
@@ -162,28 +199,41 @@ class SpeechToTextManager(private val context: Context) {
         mainHandler.post {
             if (!_isListening.value) return@post
             try {
-                speechRecognizer?.stopListening()
-                Log.i(TAG, "Requested stopListening, awaiting results...")
+                val elapsed = System.currentTimeMillis() - sessionStartTime
+                _isListening.value = false
+                _isProcessing.value = true
+
+                if (elapsed < 350) {
+                    // Pressed too briefly
+                    Log.w(TAG, "Touch too brief: ${elapsed}ms")
+                    mainHandler.postDelayed({
+                        deliverResult("", "Hold the button while speaking")
+                    }, 200)
+                } else {
+                    speechRecognizer?.stopListening()
+                    Log.i(TAG, "Requested stopListening, awaiting results...")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error stopping SpeechRecognizer: ${e.message}")
-                deliverResult(lastCapturedText)
+                deliverResult(lastCapturedText, null)
             }
         }
     }
 
-    private fun deliverResult(text: String) {
+    private fun deliverResult(text: String, errorMsg: String?) {
         _isListening.value = false
+        _isProcessing.value = false
         _audioLevel.value = 0f
         val cb = onFinalResultCallback
         onFinalResultCallback = null
-        cb?.invoke(text.trim())
+        cb?.invoke(text.trim(), errorMsg)
     }
 
     private fun cleanupRecognizer() {
         try {
             speechRecognizer?.destroy()
         } catch (e: Exception) {
-            Log.w(TAG, "Error destroying previous recognizer: ${e.message}")
+            Log.w(TAG, "Error destroying recognizer: ${e.message}")
         }
         speechRecognizer = null
     }
@@ -192,10 +242,7 @@ class SpeechToTextManager(private val context: Context) {
         mainHandler.post {
             cleanupRecognizer()
             _isListening.value = false
+            _isProcessing.value = false
         }
-    }
-
-    fun transcribe(pcmBytes: ByteArray, sampleRate: Int = 16000): String {
-        return lastCapturedText
     }
 }

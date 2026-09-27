@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -12,6 +13,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,11 +28,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -37,24 +43,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
 @Composable
 fun LoginScreen(
-    onCompleteProfile: (phone: String, name: String, age: String, radioId: String) -> Unit,
+    onCompleteProfile: (phone: String, name: String, dob: String, radioId: String) -> Unit,
     onContinueAsGuest: () -> Unit
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
     // Step state: 1 = Phone Number, 2 = Personal Info Setup
     var step by remember { mutableIntStateOf(1) }
 
+    // Loading states for interactive touch
+    var isPhoneSubmitting by remember { mutableStateOf(false) }
+    var isProfileSubmitting by remember { mutableStateOf(false) }
+
     // Onboarding data
     var phoneNumber by remember { mutableStateOf("") }
     var fullName by remember { mutableStateOf("") }
-    var age by remember { mutableStateOf("") }
+    var dob by remember { mutableStateOf("") }
 
     // Automatically assigned unique Radio ID
     val assignedRadioId = remember { "ITANTRA-${(1000..9999).random()}" }
@@ -76,7 +90,7 @@ fun LoginScreen(
                 }
                 photoUri = Uri.fromFile(photoFile)
                 hasPhoto = true
-                Toast.makeText(context, "Photo uploaded", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Photo uploaded successfully", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "Photo error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -212,25 +226,48 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(22.dp))
 
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val isPressed by interactionSource.collectIsPressedAsState()
+                        val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, label = "button_scale")
+
                         Button(
                             onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 if (phoneNumber.length < 10) {
                                     Toast.makeText(context, "Please enter a valid 10-digit number", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    step = 2
+                                    isPhoneSubmitting = true
+                                    scope.launch {
+                                        delay(350)
+                                        isPhoneSubmitting = false
+                                        step = 2
+                                    }
                                 }
                             },
+                            enabled = !isPhoneSubmitting,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp),
+                                .height(48.dp)
+                                .scale(scale),
+                            interactionSource = interactionSource,
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text(
-                                text = "Continue  ➔",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            if (isPhoneSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Verifying…", fontSize = 14.sp)
+                            } else {
+                                Text(
+                                    text = "Continue  ➔",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(18.dp))
@@ -252,7 +289,10 @@ fun LoginScreen(
                         Spacer(modifier = Modifier.height(18.dp))
 
                         OutlinedButton(
-                            onClick = { onContinueAsGuest() },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onContinueAsGuest()
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
@@ -299,7 +339,7 @@ fun LoginScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Set up your photo, name and age.",
+                            text = "Set up your photo, name and date of birth.",
                             fontSize = 12.sp,
                             color = TextSecondary,
                             textAlign = TextAlign.Center
@@ -413,17 +453,26 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        // DATE OF BIRTH FIELD (Formatted DD/MM/YYYY)
                         OutlinedTextField(
-                            value = age,
+                            value = dob,
                             onValueChange = { input ->
-                                if (input.length <= 3 && input.all { it.isDigit() }) {
-                                    age = input
+                                // Auto-format digits into DD/MM/YYYY
+                                val digitsOnly = input.filter { it.isDigit() }.take(8)
+                                val formatted = buildString {
+                                    for (i in digitsOnly.indices) {
+                                        append(digitsOnly[i])
+                                        if ((i == 1 || i == 3) && i < digitsOnly.length - 1) {
+                                            append("/")
+                                        }
+                                    }
                                 }
+                                dob = formatted
                             },
-                            label = { Text("Age") },
-                            placeholder = { Text("e.g. 21") },
+                            label = { Text("Date of Birth (DD/MM/YYYY)") },
+                            placeholder = { Text("DD/MM/YYYY e.g. 15/08/2002") },
                             leadingIcon = {
-                                Icon(Icons.Default.Cake, contentDescription = null, tint = PrimaryBlue)
+                                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue)
                             },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth(),
@@ -433,30 +482,53 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(20.dp))
 
+                        val profileInteractionSource = remember { MutableInteractionSource() }
+                        val isProfilePressed by profileInteractionSource.collectIsPressedAsState()
+                        val profileScale by animateFloatAsState(if (isProfilePressed) 0.96f else 1f, label = "profile_scale")
+
                         Button(
                             onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 if (fullName.isBlank()) {
                                     Toast.makeText(context, "Please enter your name", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    onCompleteProfile(
-                                        phoneNumber,
-                                        fullName.trim(),
-                                        age.ifBlank { "20" },
-                                        assignedRadioId
-                                    )
+                                    isProfileSubmitting = true
+                                    scope.launch {
+                                        delay(400)
+                                        isProfileSubmitting = false
+                                        onCompleteProfile(
+                                            phoneNumber,
+                                            fullName.trim(),
+                                            dob.ifBlank { "01/01/2000" },
+                                            assignedRadioId
+                                        )
+                                    }
                                 }
                             },
+                            enabled = !isProfileSubmitting,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp),
+                                .height(48.dp)
+                                .scale(profileScale),
+                            interactionSource = profileInteractionSource,
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text(
-                                text = "Complete Setup & Enter App",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            if (isProfileSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Setting up profile…", fontSize = 14.sp)
+                            } else {
+                                Text(
+                                    text = "Complete Setup & Enter App",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))

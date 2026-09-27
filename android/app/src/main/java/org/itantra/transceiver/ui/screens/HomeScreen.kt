@@ -72,6 +72,9 @@ fun HomeScreen(
     var selectedLangId by remember { mutableStateOf(0) }
     var directTextInput by remember { mutableStateOf("") }
     var showHowToDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    var isPhoneCallMode by remember { mutableStateOf(false) }
+    var isCallMuted by remember { mutableStateOf(false) }
 
     val partialText by sttManager.partialText.collectAsState()
     val audioLevel by sttManager.audioLevel.collectAsState()
@@ -112,7 +115,7 @@ fun HomeScreen(
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isPttPressed) (1.08f + audioLevel * 0.18f) else 1f,
+        targetValue = if (isPttPressed || isPhoneCallMode) (1.08f + audioLevel * 0.22f) else 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(300, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -123,7 +126,7 @@ fun HomeScreen(
     // Ripple wave ring animation
     val rippleScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isPttPressed) 1.28f else 1f,
+        targetValue = if (isPttPressed || isPhoneCallMode) 1.28f else 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(650, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -137,7 +140,7 @@ fun HomeScreen(
             .background(LightBackground)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // Control Bar: Language, SOS, Help Dialog
+        // Control Bar: 10-Language Selector, SOS, Help Dialog
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardWhite),
@@ -151,14 +154,11 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 3 Primary Languages: Hindi (0), English (1), Tamil (6)
-                val primaryLanguages = listOf(0, 1, 6)
+                // 10 Indian Languages Picker Button
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        val currIdx = primaryLanguages.indexOf(selectedLangId)
-                        val nextIdx = if (currIdx == -1) 0 else (currIdx + 1) % primaryLanguages.size
-                        selectedLangId = primaryLanguages[nextIdx]
+                        showLanguageDialog = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight),
                     shape = RoundedCornerShape(8.dp),
@@ -172,6 +172,8 @@ fun HomeScreen(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
                 }
 
                 // SOS Emergency Toggle
@@ -225,24 +227,109 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Operating Mode Toggle Bar: Walkie-Talkie (PTT) vs Phone Call (Hands-Free VAD)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardWhite),
+            shape = RoundedCornerShape(10.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp)
+            ) {
+                // Mode 1: Walkie-Talkie (PTT)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (!isPhoneCallMode) PrimaryBlue else Color.Transparent)
+                        .clickable {
+                            if (isPhoneCallMode) {
+                                isPhoneCallMode = false
+                                sttManager.isPhoneMode = false
+                                sttManager.stopListening()
+                            }
+                        }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = null,
+                            tint = if (!isPhoneCallMode) Color.White else TextSecondary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Walkie-Talkie (PTT)",
+                            fontWeight = if (!isPhoneCallMode) FontWeight.Bold else FontWeight.Medium,
+                            color = if (!isPhoneCallMode) Color.White else TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Mode 2: Phone Call (Hands-Free VAD)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isPhoneCallMode) AccentGreen else Color.Transparent)
+                        .clickable {
+                            if (!isPhoneCallMode) {
+                                isPhoneCallMode = true
+                                sttManager.isPhoneMode = true
+                                onStartPtt(selectedLangId)
+                                Toast.makeText(context, "Phone Call Mode: Hands-Free Voice Activated", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Phone,
+                            contentDescription = null,
+                            tint = if (isPhoneCallMode) Color.White else TextSecondary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Phone Call (VAD)",
+                            fontWeight = if (isPhoneCallMode) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isPhoneCallMode) Color.White else TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Live Speech Recognition Status Banner
         AnimatedVisibility(
-            visible = isPttPressed || partialText.isNotBlank() || isProcessing,
+            visible = isPttPressed || isPhoneCallMode || partialText.isNotBlank() || isProcessing,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = PrimaryLight),
+                colors = CardDefaults.cardColors(containerColor = if (isPhoneCallMode) Color(0xFFE8F5E9) else PrimaryLight),
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.3f))
+                border = BorderStroke(1.dp, (if (isPhoneCallMode) AccentGreen else PrimaryBlue).copy(alpha = 0.3f))
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (isProcessing) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
-                                color = PrimaryBlue,
+                                color = if (isPhoneCallMode) AccentGreen else PrimaryBlue,
                                 strokeWidth = 2.dp
                             )
                         } else {
@@ -255,8 +342,10 @@ fun HomeScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isProcessing) "Processing audio transcription…" else "Live Transcription (${TantraPacket.LANG_NAMES[selectedLangId]})",
-                            color = PrimaryBlue,
+                            text = if (isPhoneCallMode) "📞 Hands-Free Call • VAD Auto-Detecting Speech (${TantraPacket.LANG_NAMES[selectedLangId]})"
+                            else if (isProcessing) "Processing audio transcription…"
+                            else "Live Transcription (${TantraPacket.LANG_NAMES[selectedLangId]})",
+                            color = if (isPhoneCallMode) Color(0xFF2E7D32) else PrimaryBlue,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -266,6 +355,7 @@ fun HomeScreen(
                         text = when {
                             partialText.isNotBlank() -> "\"$partialText\""
                             isProcessing -> "Transcribing speech into data packet…"
+                            isPhoneCallMode -> "Listening continuously… speak naturally without holding button"
                             else -> "Listening… speak now"
                         },
                         color = TextDark,
@@ -276,105 +366,200 @@ fun HomeScreen(
             }
         }
 
-        // PTT Button Area with Expanding Wave Ripple and Tactile Touch
+        // Center Area: PTT Walkie-Talkie OR Hands-Free Phone Call
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
             contentAlignment = Alignment.Center
         ) {
-            // Expanding concentric ripple waves during hold
-            if (isPttPressed) {
+            if (isPhoneCallMode) {
+                // PHONE CALL MODE: Hands-Free VAD with call controls
                 Box(
                     modifier = Modifier
-                        .size(220.dp)
+                        .size(230.dp)
                         .scale(rippleScale)
                         .clip(CircleShape)
-                        .background((if (isEmergencySos) SOSRed else PrimaryBlue).copy(alpha = 0.15f))
+                        .background(AccentGreen.copy(alpha = 0.15f))
                 )
                 Box(
                     modifier = Modifier
                         .size(195.dp)
                         .scale(pulseScale)
                         .clip(CircleShape)
-                        .background((if (isEmergencySos) SOSRed else PrimaryBlue).copy(alpha = 0.28f))
+                        .background(AccentGreen.copy(alpha = 0.28f))
                 )
-            }
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .size(165.dp)
-                        .scale(pulseScale)
-                        .shadow(
-                            elevation = if (isPttPressed) 16.dp else 6.dp,
-                            shape = CircleShape,
-                            ambientColor = if (isEmergencySos) SOSRed else PrimaryBlue,
-                            spotColor = if (isEmergencySos) SOSRed else PrimaryBlue
-                        )
-                        .clip(CircleShape)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = if (isEmergencySos) {
-                                    listOf(SOSRed, Color(0xFFC62828))
-                                } else if (isPttPressed) {
-                                    listOf(AccentGreen, Color(0xFF1B5E20))
-                                } else {
-                                    listOf(PrimaryBlue, PrimaryDark)
-                                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(165.dp)
+                            .shadow(16.dp, CircleShape, spotColor = AccentGreen)
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(AccentGreen, Color(0xFF1B5E20))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Call,
+                                contentDescription = "Active Call",
+                                tint = Color.White,
+                                modifier = Modifier.size(46.dp)
                             )
-                        )
-                        .pointerInteropFilter { motionEvent ->
-                            when (motionEvent.action) {
-                                MotionEvent.ACTION_DOWN -> {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    isPttPressed = true
-                                    onStartPtt(selectedLangId)
-                                    true
-                                }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "CALL ACTIVE",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "Hands-Free VAD",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
 
-                                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    isPttPressed = false
-                                    onStopPtt(isEmergencySos, selectedLangId) { sentPacket ->
-                                        messageLog.add(0, TransmissionItem(sentPacket, isIncoming = false))
-                                    }
-                                    true
-                                }
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                                else -> false
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = if (isPttPressed) Icons.Default.Mic else Icons.Default.MicNone,
-                            contentDescription = "Push to Talk",
-                            tint = Color.White,
-                            modifier = Modifier.size(46.dp)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = when {
-                                isPttPressed -> "Transmitting…"
-                                isProcessing -> "Sending…"
-                                else -> "Hold to Talk"
+                    // Phone Call Controls: Mute and End Call
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                isCallMuted = !isCallMuted
+                                if (isCallMuted) sttManager.stopListening() else onStartPtt(selectedLangId)
                             },
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFFD1D5DB))
+                        ) {
+                            Icon(
+                                if (isCallMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = if (isCallMuted) SOSRed else TextDark,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(if (isCallMuted) "Unmute" else "Mute", color = TextDark, fontSize = 12.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                isPhoneCallMode = false
+                                sttManager.isPhoneMode = false
+                                sttManager.stopListening()
+                                Toast.makeText(context, "Call Ended", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SOSRed),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.CallEnd, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("End Call", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
+            } else {
+                // PTT WALKIE-TALKIE MODE: Hold-to-Talk button with expanding wave ripple
+                if (isPttPressed) {
+                    Box(
+                        modifier = Modifier
+                            .size(220.dp)
+                            .scale(rippleScale)
+                            .clip(CircleShape)
+                            .background((if (isEmergencySos) SOSRed else PrimaryBlue).copy(alpha = 0.15f))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(195.dp)
+                            .scale(pulseScale)
+                            .clip(CircleShape)
+                            .background((if (isEmergencySos) SOSRed else PrimaryBlue).copy(alpha = 0.28f))
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(165.dp)
+                            .scale(pulseScale)
+                            .shadow(
+                                elevation = if (isPttPressed) 16.dp else 6.dp,
+                                shape = CircleShape,
+                                ambientColor = if (isEmergencySos) SOSRed else PrimaryBlue,
+                                spotColor = if (isEmergencySos) SOSRed else PrimaryBlue
+                            )
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = if (isEmergencySos) {
+                                        listOf(SOSRed, Color(0xFFC62828))
+                                    } else if (isPttPressed) {
+                                        listOf(AccentGreen, Color(0xFF1B5E20))
+                                    } else {
+                                        listOf(PrimaryBlue, PrimaryDark)
+                                    }
+                                )
+                            )
+                            .pointerInteropFilter { motionEvent ->
+                                when (motionEvent.action) {
+                                    MotionEvent.ACTION_DOWN -> {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        isPttPressed = true
+                                        onStartPtt(selectedLangId)
+                                        true
+                                    }
 
-                Text(
-                    text = if (isPttPressed) "Release when done speaking" else "Press and hold to record",
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
+                                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        isPttPressed = false
+                                        onStopPtt(isEmergencySos, selectedLangId) { sentPacket ->
+                                            messageLog.add(0, TransmissionItem(sentPacket, isIncoming = false))
+                                        }
+                                        true
+                                    }
+
+                                    else -> false
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = if (isPttPressed) Icons.Default.Mic else Icons.Default.MicNone,
+                                contentDescription = "Push to Talk",
+                                tint = Color.White,
+                                modifier = Modifier.size(46.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = when {
+                                    isPttPressed -> "Transmitting…"
+                                    isProcessing -> "Sending…"
+                                    else -> "Hold to Talk"
+                                },
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = if (isPttPressed) "Release when done speaking" else "Press and hold to record",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
 
@@ -594,8 +779,8 @@ fun HomeScreen(
 
                     HowToGuideItem(
                         icon = Icons.Default.Language,
-                        title = "🇮🇳 3 Indian Languages",
-                        description = "Tap the top language button to switch between Hindi, English, and Tamil."
+                        title = "🇮🇳 10 Mandated Indian Languages",
+                        description = "Tap the language selector to switch between Hindi, English, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada, Malayalam, and Odia."
                     )
                 }
             },
@@ -606,6 +791,90 @@ fun HomeScreen(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Understood", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            containerColor = CardWhite,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // 10 INDIAN LANGUAGES PICKER MODAL DIALOG
+    if (showLanguageDialog) {
+        val nativeNames = listOf(
+            "हिंदी (Hindi)",
+            "English (English)",
+            "ગુજરાતી (Gujarati)",
+            "मराठी (Marathi)",
+            "ಕನ್ನಡ (Kannada)",
+            "മലയാളം (Malayalam)",
+            "தமிழ் (Tamil)",
+            "తెలుగు (Telugu)",
+            "ଓଡ଼ିଆ (Odia)",
+            "বাংলা (Bengali)"
+        )
+
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Language, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Select Language (10 Mandated)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = TextDark
+                    )
+                }
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                ) {
+                    items(10) { idx ->
+                        val isSelected = selectedLangId == idx
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 3.dp)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    selectedLangId = idx
+                                    showLanguageDialog = false
+                                    Toast.makeText(context, "Switched to ${TantraPacket.LANG_NAMES[idx]}", Toast.LENGTH_SHORT).show()
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) PrimaryLight else SurfaceGray
+                            ),
+                            border = if (isSelected) BorderStroke(1.dp, PrimaryBlue) else null,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = nativeNames[idx],
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) PrimaryBlue else TextDark
+                                )
+                                if (isSelected) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text("Close", color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
                 }
             },
             containerColor = CardWhite,

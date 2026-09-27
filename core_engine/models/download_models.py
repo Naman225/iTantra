@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
-iTantra - Model Download Utility
+iTantra - Multilingual Offline Model Download Utility
 Downloads lightweight offline STT (Vosk) and TTS (Piper ONNX) models
-for Hindi and Indian English.
+for all 10 Indian languages mandated by SIH & ISRO:
+Hindi (hi), English (en), Bengali (bn), Gujarati (gu), Marathi (mr),
+Kannada (kn), Malayalam (ml), Tamil (ta), Telugu (te), Odia (or).
 """
 
 import os
 import sys
+import argparse
 import zipfile
 import urllib.request
 from pathlib import Path
@@ -15,45 +18,139 @@ BASE_DIR = Path(__file__).resolve().parent
 STT_DIR = BASE_DIR / "stt"
 TTS_DIR = BASE_DIR / "tts"
 
-MODELS = {
-    "stt_hindi": {
+# All 10 Supported Languages Map
+ALL_LANGUAGES = ["hi", "en", "bn", "gu", "mr", "kn", "ml", "ta", "te", "or"]
+
+VOSK_STT_MODELS = {
+    "hi": {
         "url": "https://alphacephei.com/vosk/models/vosk-model-small-hi-0.22.zip",
-        "dest_dir": STT_DIR,
         "extracted_name": "vosk-model-small-hi-0.22",
-        "type": "zip"
+        "name": "Hindi (small-hi-0.22)"
     },
-    "stt_en_in": {
+    "en": {
         "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-in-0.4.zip",
-        "dest_dir": STT_DIR,
         "extracted_name": "vosk-model-small-en-in-0.4",
-        "type": "zip"
+        "name": "Indian English (small-en-in-0.4)"
     },
-    "tts_hindi_onnx": {
-        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/pratham/medium/hi_IN-pratham-medium.onnx",
-        "dest_file": TTS_DIR / "hi_IN-pratham-medium.onnx",
-        "type": "file"
+    "bn": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-bn-0.4.zip",
+        "extracted_name": "vosk-model-small-bn-0.4",
+        "name": "Bengali (small-bn-0.4)"
     },
-    "tts_hindi_json": {
-        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/pratham/medium/hi_IN-pratham-medium.onnx.json",
-        "dest_file": TTS_DIR / "hi_IN-pratham-medium.onnx.json",
-        "type": "file"
+    "gu": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-gu-0.4.zip",
+        "extracted_name": "vosk-model-small-gu-0.4",
+        "name": "Gujarati (small-gu-0.4)"
     },
-    "tts_english_onnx": {
-        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/low/en_US-lessac-low.onnx",
-        "dest_file": TTS_DIR / "en_US-lessac-low.onnx",
-        "type": "file"
+    "mr": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-mr-0.4.zip",
+        "extracted_name": "vosk-model-small-mr-0.4",
+        "name": "Marathi (small-mr-0.4)"
     },
-    "tts_english_json": {
-        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/low/en_US-lessac-low.onnx.json",
-        "dest_file": TTS_DIR / "en_US-lessac-low.onnx.json",
-        "type": "file"
+    "kn": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-kn-0.4.zip",
+        "extracted_name": "vosk-model-small-kn-0.4",
+        "name": "Kannada (small-kn-0.4)"
+    },
+    "ml": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-ml-0.4.zip",
+        "extracted_name": "vosk-model-small-ml-0.4",
+        "name": "Malayalam (small-ml-0.4)"
+    },
+    "ta": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-ta-0.4.zip",
+        "extracted_name": "vosk-model-small-ta-0.4",
+        "name": "Tamil (small-ta-0.4)"
+    },
+    "te": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-te-0.4.zip",
+        "extracted_name": "vosk-model-small-te-0.4",
+        "name": "Telugu (small-te-0.4)"
+    },
+    "or": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-or-0.4.zip",
+        "extracted_name": "vosk-model-small-or-0.4",
+        "name": "Odia (small-or-0.4)"
+    }
+}
+
+PIPER_TTS_MODELS = {
+    "hi": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/pratham/medium/hi_IN-pratham-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/pratham/medium/hi_IN-pratham-medium.onnx.json",
+        "onnx_file": "hi_IN-pratham-medium.onnx",
+        "json_file": "hi_IN-pratham-medium.onnx.json",
+        "name": "Hindi Pratham Medium"
+    },
+    "en": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/low/en_US-lessac-low.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/low/en_US-lessac-low.onnx.json",
+        "onnx_file": "en_US-lessac-low.onnx",
+        "json_file": "en_US-lessac-low.onnx.json",
+        "name": "English Lessac Low"
+    },
+    "bn": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/bn/bn_IN/indic/medium/bn_IN-indic-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/bn/bn_IN/indic/medium/bn_IN-indic-medium.onnx.json",
+        "onnx_file": "bn_IN-indic-medium.onnx",
+        "json_file": "bn_IN-indic-medium.onnx.json",
+        "name": "Bengali Indic Medium"
+    },
+    "gu": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/gu/gu_IN/indic/medium/gu_IN-indic-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/gu/gu_IN/indic/medium/gu_IN-indic-medium.onnx.json",
+        "onnx_file": "gu_IN-indic-medium.onnx",
+        "json_file": "gu_IN-indic-medium.onnx.json",
+        "name": "Gujarati Indic Medium"
+    },
+    "mr": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/mr/mr_IN/indic/medium/mr_IN-indic-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/mr/mr_IN/indic/medium/mr_IN-indic-medium.onnx.json",
+        "onnx_file": "mr_IN-indic-medium.onnx",
+        "json_file": "mr_IN-indic-medium.onnx.json",
+        "name": "Marathi Indic Medium"
+    },
+    "kn": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/kn/kn_IN/indic/medium/kn_IN-indic-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/kn/kn_IN/indic/medium/kn_IN-indic-medium.onnx.json",
+        "onnx_file": "kn_IN-indic-medium.onnx",
+        "json_file": "kn_IN-indic-medium.onnx.json",
+        "name": "Kannada Indic Medium"
+    },
+    "ml": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ml/ml_IN/indic/medium/ml_IN-indic-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ml/ml_IN/indic/medium/ml_IN-indic-medium.onnx.json",
+        "onnx_file": "ml_IN-indic-medium.onnx",
+        "json_file": "ml_IN-indic-medium.onnx.json",
+        "name": "Malayalam Indic Medium"
+    },
+    "ta": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ta/ta_IN/indic/medium/ta_IN-indic-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ta/ta_IN/indic/medium/ta_IN-indic-medium.onnx.json",
+        "onnx_file": "ta_IN-indic-medium.onnx",
+        "json_file": "ta_IN-indic-medium.onnx.json",
+        "name": "Tamil Indic Medium"
+    },
+    "te": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/te/te_IN/indic/medium/te_IN-indic-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/te/te_IN/indic/medium/te_IN-indic-medium.onnx.json",
+        "onnx_file": "te_IN-indic-medium.onnx",
+        "json_file": "te_IN-indic-medium.onnx.json",
+        "name": "Telugu Indic Medium"
+    },
+    "or": {
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/or/or_IN/indic/medium/or_IN-indic-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/or/or_IN/indic/medium/or_IN-indic-medium.onnx.json",
+        "onnx_file": "or_IN-indic-medium.onnx",
+        "json_file": "or_IN-indic-medium.onnx.json",
+        "name": "Odia Indic Medium"
     }
 }
 
 def download_file(url: str, target_path: Path):
     if target_path.exists() and target_path.stat().st_size > 0:
         print(f"[OK] File already exists: {target_path.name} ({target_path.stat().st_size / 1024 / 1024:.2f} MB)")
-        return
+        return True
     print(f"[DOWNLOADING] {url} -> {target_path.name} ...")
     target_path.parent.mkdir(parents=True, exist_ok=True)
     
@@ -63,40 +160,69 @@ def download_file(url: str, target_path: Path):
             sys.stdout.write(f"\r  Progress: {percent}% ({count * block_size / 1024 / 1024:.1f}/{total_size / 1024 / 1024:.1f} MB)")
             sys.stdout.flush()
 
-    urllib.request.urlretrieve(url, str(target_path), reporthook=reporthook)
-    print(f"\n[DONE] Saved {target_path.name}")
+    try:
+        urllib.request.urlretrieve(url, str(target_path), reporthook=reporthook)
+        print(f"\n[DONE] Saved {target_path.name}")
+        return True
+    except Exception as e:
+        print(f"\n[WARN] Could not download {url}: {e}")
+        if target_path.exists():
+            target_path.unlink()
+        return False
 
 def extract_zip(zip_path: Path, extract_to: Path):
     print(f"[EXTRACTING] {zip_path.name} to {extract_to} ...")
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_to)
-    print(f"[DONE] Extracted {zip_path.name}")
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_to)
+        print(f"[DONE] Extracted {zip_path.name}")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Extraction failed for {zip_path.name}: {e}")
+        return False
 
-def main():
+def setup_languages(languages: list):
     STT_DIR.mkdir(parents=True, exist_ok=True)
     TTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    print("=== iTantra Offline Model Setup ===")
-    
+    print("=" * 70)
+    print(f"  iTantra 10-Language Model Setup: {', '.join(languages).upper()}")
+    print("=" * 70)
+
     # 1. Download Vosk STT models
-    for key in ["stt_hindi", "stt_en_in"]:
-        cfg = MODELS[key]
-        extracted_folder = cfg["dest_dir"] / cfg["extracted_name"]
-        if extracted_folder.exists():
-            print(f"[OK] Extracted model folder already exists: {extracted_folder.name}")
+    print("\n--- 1. Checking / Downloading Vosk STT Models ---")
+    for lang in languages:
+        if lang not in VOSK_STT_MODELS:
             continue
-        zip_file = cfg["dest_dir"] / Path(cfg["url"]).name
-        download_file(cfg["url"], zip_file)
-        extract_zip(zip_file, cfg["dest_dir"])
-        if zip_file.exists():
+        cfg = VOSK_STT_MODELS[lang]
+        extracted_folder = STT_DIR / cfg["extracted_name"]
+        if extracted_folder.exists():
+            print(f"[OK] Vosk STT for {lang.upper()} ({cfg['name']}) already installed at {extracted_folder.name}")
+            continue
+
+        zip_file = STT_DIR / Path(cfg["url"]).name
+        success = download_file(cfg["url"], zip_file)
+        if success and zip_file.exists():
+            extract_zip(zip_file, STT_DIR)
             zip_file.unlink()
 
     # 2. Download Piper TTS models
-    for key in ["tts_hindi_onnx", "tts_hindi_json", "tts_english_onnx", "tts_english_json"]:
-        cfg = MODELS[key]
-        download_file(cfg["url"], cfg["dest_file"])
+    print("\n--- 2. Checking / Downloading Piper TTS Models ---")
+    for lang in languages:
+        if lang not in PIPER_TTS_MODELS:
+            continue
+        cfg = PIPER_TTS_MODELS[lang]
+        onnx_path = TTS_DIR / cfg["onnx_file"]
+        json_path = TTS_DIR / cfg["json_file"]
+        
+        if onnx_path.exists() and json_path.exists():
+            print(f"[OK] Piper TTS for {lang.upper()} ({cfg['name']}) already installed.")
+            continue
 
-    print("\n[SUCCESS] All Step 1 models downloaded and verified!")
+        download_file(cfg["onnx_url"], onnx_path)
+        download_file(cfg["json_url"], json_path)
+
+    print("\n[SUCCESS] Model check completed!")
     print(f"\nSTT Models in: {STT_DIR}")
     for item in sorted(STT_DIR.iterdir()):
         print(f" - {item.name}")
@@ -104,6 +230,23 @@ def main():
     for item in sorted(TTS_DIR.iterdir()):
         size_mb = item.stat().st_size / 1024 / 1024
         print(f" - {item.name} ({size_mb:.2f} MB)")
+
+def main():
+    parser = argparse.ArgumentParser(description="iTantra Multilingual Offline Model Setup")
+    parser.add_argument(
+        "--lang",
+        type=str,
+        default="hi,en",
+        help="Comma-separated language codes to download (e.g. 'hi,en,ta,te') or 'all' for all 10 languages."
+    )
+    args = parser.parse_args()
+
+    if args.lang.strip().lower() == "all":
+        languages = ALL_LANGUAGES
+    else:
+        languages = [l.strip().lower() for l in args.lang.split(",") if l.strip().lower() in ALL_LANGUAGES]
+
+    setup_languages(languages)
 
 if __name__ == "__main__":
     main()

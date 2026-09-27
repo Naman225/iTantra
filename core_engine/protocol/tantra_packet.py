@@ -42,22 +42,25 @@ SCRIPT_RANGES = {
     "te": (0x0C00, 0x0C7F),  # Telugu
     "kn": (0x0C80, 0x0CFF),  # Kannada
     "ml": (0x0D00, 0x0D7F),  # Malayalam
-    "hi": (0x0900, 0x097F),  # Devanagari (Hindi / Marathi)
+    "hi": (0x0900, 0x097F),  # Devanagari (Hindi)
 }
 
 def detect_language_from_text(text: str) -> str:
     """
-    Automatically detects the language code based on unicode character distributions.
-    Defaults to 'en' for Latin text and 'hi' for Devanagari text.
+    Automatically detects the language code based on unicode character distributions
+    across all 10 mandated Indian languages.
     """
     counts = {k: 0 for k in SCRIPT_RANGES}
     latin_count = 0
+    has_marathi_char = False
 
     for ch in text:
         cp = ord(ch)
         if (65 <= cp <= 90) or (97 <= cp <= 122):
             latin_count += 1
             continue
+        if cp == 0x0933:  # 'ळ' character specific to Marathi
+            has_marathi_char = True
         for lang, (low, high) in SCRIPT_RANGES.items():
             if low <= cp <= high:
                 counts[lang] += 1
@@ -68,6 +71,8 @@ def detect_language_from_text(text: str) -> str:
     max_indic_count = counts[max_indic_lang]
 
     if max_indic_count > latin_count and max_indic_count > 0:
+        if max_indic_lang == "hi" and has_marathi_char:
+            return "mr"
         return max_indic_lang
     elif latin_count > 0:
         return "en"

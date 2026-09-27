@@ -63,17 +63,52 @@ class MainActivity : ComponentActivity() {
     private var pendingLangId = 0
     private var pendingOnSent: ((TantraPacket) -> Unit)? = null
 
-    // 3-Tier Keyword Detection: Red SOS vs Yellow Alert
+    // 3-Tier Keyword Detection: Red SOS vs Yellow Alert across ALL 10 Mandated Indian Languages
+    // Includes Native Scripts (Devanagari, Tamil, Telugu, Bengali, Gujarati, Kannada, Malayalam, Odia) + Latin Transliterations
     private val sosKeywords = listOf(
+        // English / International
         "sos", "help", "emergency", "mayday", "distress", "evacuate",
-        "बचाओ", "आपातकालीन", "संकट", "मदद", "तुरंत", "सहायता",
-        "kaapadu", "kaapaathunga", "aabathu", "udhavi", "udane"
+        // Hindi & Marathi (Devanagari)
+        "बचाओ", "आपातकालीन", "संकट", "मदद", "तुरंत", "सहायता", "वाचवा", "आणीबाणी",
+        // Tamil
+        "காப்பாற்றுங்கள்", "காப்பாது", "உதவி", "அவசரம்", "ஆபத்து",
+        // Telugu
+        "కాపాడండి", "సహాయం", "అత్యవసరం", "ఆపద",
+        // Bengali
+        "বাঁচাও", "জরুরি", "সাহায্য",
+        // Gujarati
+        "બચાવો", "મદદ", "કટોકટી",
+        // Kannada
+        "ಉಳಿಸಿ", "ಸಹಾಯ", "ತುರ್ತು",
+        // Malayalam
+        "രക്ഷിക്കൂ", "സഹായം", "അടിയന്തരാവസ്ഥ",
+        // Odia
+        "ବଞ୍ଚାଅ", "ସାହାଯ୍ୟ", "ଜରୁରୀକାଳୀନ",
+        // Transliterations
+        "bachao", "aapatkaleen", "kaapadu", "kaapaathunga", "aabathu", "udhavi", "vachva", "shishya"
     )
 
     private val alertKeywords = listOf(
-        "alert", "warning", "danger", "caution", "hazard",
-        "खतरा", "चेतावनी", "सावधान", "सतर्क",
-        "eccarikkai", "abaththukkuriyeedu", "kavanam", "abayam"
+        // English / International
+        "alert", "warning", "danger", "caution", "hazard", "threat",
+        // Hindi & Marathi (Devanagari)
+        "खतरा", "चेतावनी", "सावधान", "सतर्क", "धोका", "सतर्कता",
+        // Tamil
+        "எச்சரிக்கை", "கவனம்", "அபாயம்",
+        // Telugu
+        "ప్రమాదం", "హెచ్చరిక", "జాగ్రత్త",
+        // Bengali
+        "বিপদ", "সতর্কতা", "হুঁশিয়ার",
+        // Gujarati
+        "ખતરો", "ચેતવણી", "સાવધાન",
+        // Kannada
+        "ಅಪಾಯ", "ಎಚ್ಚರಿಕೆ", "ಜಾಗರೂಕರಾಗಿರಿ",
+        // Malayalam
+        "അപകടം", "ജാഗ്രത", "മുന്നറിയിപ്പ്",
+        // Odia
+        "ବିପଦ", "ଚେତାବନୀ", "ସତର୍କତା",
+        // Transliterations
+        "khatra", "chetawani", "savdhan", "dhoka", "eccarikkai", "abaththukkuriyeedu", "kavanam", "abayam"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

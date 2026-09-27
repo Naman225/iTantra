@@ -61,10 +61,13 @@ data class TantraPacket(
             var gujaratiCount = 0
             var odiaCount = 0
 
+            var hasMarathiChar = false
+
             for (ch in text) {
                 val cp = ch.code
                 when {
                     (cp in 65..90) || (cp in 97..122) -> latinCount++
+                    cp == 0x0933 -> { devanagariCount++; hasMarathiChar = true }
                     cp in 0x0900..0x097F -> devanagariCount++
                     cp in 0x0B80..0x0BFF -> tamilCount++
                     cp in 0x0C00..0x0C7F -> teluguCount++
@@ -84,7 +87,7 @@ data class TantraPacket(
                 bengaliCount > 0 -> 9    // Bengali
                 gujaratiCount > 0 -> 2   // Gujarati
                 odiaCount > 0 -> 8       // Odia
-                devanagariCount > 0 -> 0 // Hindi / Marathi
+                devanagariCount > 0 -> if (hasMarathiChar) 3 else 0 // 3 = Marathi, 0 = Hindi
                 latinCount > 0 -> 1      // English
                 else -> 0                // Default Hindi
             }

@@ -51,6 +51,20 @@ class SpeechToTextManager(private val context: Context) {
     private var onFinalResultCallback: ((String, String?) -> Unit)? = null
     private var lastCapturedText = ""
     private var sessionStartTime = 0L
+    private var lastLangId = 0
+
+    // Real-Time Voice Activity Detection (VAD) Engine
+    val vad = VoiceActivityDetector().apply {
+        onSpeechPause = {
+            if (_isListening.value && (isPhoneMode || isVadAutoStopEnabled)) {
+                Log.i(TAG, "VAD speech pause detected -> committing speech segment")
+                stopListening()
+            }
+        }
+    }
+
+    var isPhoneMode: Boolean = false
+    var isVadAutoStopEnabled: Boolean = true
 
     // Engine A: Open-Source Vosk Engine (Apache 2.0)
     private var voskModel: Model? = null
@@ -105,6 +119,7 @@ class SpeechToTextManager(private val context: Context) {
                 _partialText.value = ""
                 lastCapturedText = ""
                 sessionStartTime = System.currentTimeMillis()
+                lastLangId = langId
                 onFinalResultCallback = onResult
                 _isListening.value = true
                 _isProcessing.value = false
@@ -198,6 +213,7 @@ class SpeechToTextManager(private val context: Context) {
             override fun onRmsChanged(rmsdB: Float) {
                 val normalized = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
                 _audioLevel.value = normalized
+                vad.processRms(rmsdB)
             }
 
             override fun onBufferReceived(buffer: ByteArray?) {}
@@ -265,9 +281,16 @@ class SpeechToTextManager(private val context: Context) {
         })
 
         val langTag = when (langId) {
-            0 -> "hi-IN"
-            1 -> "en-IN"
+            0 -> "hi-IN" // Hindi
+            1 -> "en-IN" // English
+            2 -> "gu-IN" // Gujarati
+            3 -> "mr-IN" // Marathi
+            4 -> "kn-IN" // Kannada
+            5 -> "ml-IN" // Malayalam
             6 -> "ta-IN" // Tamil
+            7 -> "te-IN" // Telugu
+            8 -> "or-IN" // Odia
+            9 -> "bn-IN" // Bengali
             else -> "hi-IN"
         }
 
@@ -279,6 +302,8 @@ class SpeechToTextManager(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
+            // Enforce 100% offline speech recognition (no cloud / zero internet)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
             // Faster silence detection thresholds to speed up voice recognition pace
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 350L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 250L)
@@ -336,9 +361,23 @@ class SpeechToTextManager(private val context: Context) {
         _isListening.value = false
         _isProcessing.value = false
         _audioLevel.value = 0f
+        vad.reset()
         val cb = onFinalResultCallback
-        onFinalResultCallback = null
+        if (!isPhoneMode) {
+            onFinalResultCallback = null
+        }
         cb?.invoke(text.trim(), errorMsg)
+
+        // In continuous Phone Call Mode, automatically re-listen for next spoken sentence
+        if (isPhoneMode && isAvailable()) {
+            mainHandler.postDelayed({
+                if (isPhoneMode && !_isListening.value) {
+                    startListening(lastLangId) { nextText, nextErr ->
+                        deliverResult(nextText, nextErr)
+                    }
+                }
+            }, 350)
+        }
     }
 
     private fun cleanupEngines() {

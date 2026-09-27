@@ -71,8 +71,19 @@ class TextToSpeechManager(
         val available = tts?.isLanguageAvailable(targetLocale)
         if (available != TextToSpeech.LANG_NOT_SUPPORTED && available != TextToSpeech.LANG_MISSING_DATA) {
             tts?.language = targetLocale
+            // Select on-device offline voice pack (strictly zero internet / no cloud synthesis)
+            try {
+                tts?.voices?.filter { !it.isNetworkConnectionRequired }?.firstOrNull {
+                    it.locale.language.equals(targetLocale.language, ignoreCase = true)
+                }?.let { offlineVoice ->
+                    tts?.voice = offlineVoice
+                    Log.i(TAG, "Using 100% offline on-device voice: ${offlineVoice.name}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Voice selection note: ${e.message}")
+            }
         } else {
-            // Fallback to English/Hindi if specific dialect is unavailable
+            // Fallback to on-device English/Hindi if specific dialect is unavailable
             tts?.language = if (langCode == "en") Locale.ENGLISH else Locale("hi", "IN")
         }
 
@@ -88,7 +99,11 @@ class TextToSpeechManager(
             }
         })
 
-        val params = Bundle()
+        val params = Bundle().apply {
+            // Explicitly block cloud/network synthesis to guarantee 100% offline compliance
+            putString(TextToSpeech.Engine.KEY_FEATURE_NETWORK_SYNTHESIS, "false")
+        }
+
         if (isEmergency) {
             val audioAttributes = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)

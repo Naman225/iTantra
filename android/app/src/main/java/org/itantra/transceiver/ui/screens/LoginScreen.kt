@@ -1,12 +1,22 @@
 package org.itantra.transceiver.ui.screens
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,21 +28,60 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import java.io.File
+import java.io.FileOutputStream
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (name: String, unit: String) -> Unit,
+    onCompleteProfile: (phone: String, name: String, age: String, radioId: String) -> Unit,
     onContinueAsGuest: () -> Unit
 ) {
     val context = LocalContext.current
-    var callSign by remember { mutableStateOf("") }
-    var unitPost by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
+
+    // Step state: 1 = Phone Number, 2 = Personal Info Setup
+    var step by remember { mutableIntStateOf(1) }
+
+    // Onboarding data
+    var phoneNumber by remember { mutableStateOf("") }
+    var fullName by remember { mutableStateOf("") }
+    var age by remember { mutableStateOf("") }
+
+    // Automatically assigned unique Radio ID
+    val assignedRadioId = remember { "ITANTRA-${(1000..9999).random()}" }
+
+    // Photo file handling
+    val photoFile = remember { File(context.filesDir, "profile_photo.jpg") }
+    var photoUri by remember { mutableStateOf<Uri?>(if (photoFile.exists()) Uri.fromFile(photoFile) else null) }
+    var hasPhoto by remember { mutableStateOf(photoFile.exists()) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.use { input ->
+                    FileOutputStream(photoFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                photoUri = Uri.fromFile(photoFile)
+                hasPhoto = true
+                Toast.makeText(context, "Photo uploaded", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Photo error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -43,12 +92,12 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // Hero Logo & Indian Tricolor Accent
+        // Hero Logo & Tricolor Accent
         Box(
             modifier = Modifier
-                .size(80.dp)
+                .size(76.dp)
                 .shadow(8.dp, CircleShape, spotColor = PrimaryBlue)
                 .clip(CircleShape)
                 .background(
@@ -62,16 +111,16 @@ fun LoginScreen(
                 imageVector = Icons.Default.Radio,
                 contentDescription = "iTantra Logo",
                 tint = Color.White,
-                modifier = Modifier.size(42.dp)
+                modifier = Modifier.size(38.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Indian Tricolor Bar
         Row(
             modifier = Modifier
-                .width(50.dp)
+                .width(48.dp)
                 .height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
         ) {
@@ -80,11 +129,11 @@ fun LoginScreen(
             Box(modifier = Modifier.weight(1f).fillMaxHeight().background(Color(0xFF138808))) // Green
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Text(
             text = "iTantra",
-            fontSize = 30.sp,
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = PrimaryDark,
             letterSpacing = 0.5.sp
@@ -97,150 +146,331 @@ fun LoginScreen(
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Login Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = CardWhite),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Operator Login",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextDark
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = "Enter your call sign or name to identify yourself on the emergency airlink.",
-                    fontSize = 12.sp,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                OutlinedTextField(
-                    value = callSign,
-                    onValueChange = { callSign = it },
-                    label = { Text("Call Sign / Full Name") },
-                    placeholder = { Text("e.g. Officer Naman, Unit Alpha") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryBlue)
-                    },
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "step_transition"
+        ) { currentStep ->
+            if (currentStep == 1) {
+                // STEP 1: PHONE NUMBER ENTRY
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
-                        unfocusedBorderColor = Color(0xFFD1D5DB),
-                        focusedLabelColor = PrimaryBlue
-                    ),
-                    singleLine = true
-                )
+                    colors = CardDefaults.cardColors(containerColor = CardWhite),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Enter Phone Number",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                OutlinedTextField(
-                    value = unitPost,
-                    onValueChange = { unitPost = it },
-                    label = { Text("Unit / Post / Sector") },
-                    placeholder = { Text("e.g. Disaster Response, Post 4") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Business, contentDescription = null, tint = PrimaryBlue)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
-                        unfocusedBorderColor = Color(0xFFD1D5DB),
-                        focusedLabelColor = PrimaryBlue
-                    ),
-                    singleLine = true
-                )
+                        Text(
+                            text = "Enter your phone number to set up your secure offline transceiver profile.",
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
 
-                Spacer(modifier = Modifier.height(22.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
-                    onClick = {
-                        if (callSign.isBlank()) {
-                            Toast.makeText(context, "Please enter your name or call sign", Toast.LENGTH_SHORT).show()
-                        } else {
-                            onLoginSuccess(callSign.trim(), unitPost.trim().ifBlank { "Field Unit" })
+                        OutlinedTextField(
+                            value = phoneNumber,
+                            onValueChange = { input ->
+                                if (input.length <= 10 && input.all { it.isDigit() }) {
+                                    phoneNumber = input
+                                }
+                            },
+                            label = { Text("Phone Number") },
+                            placeholder = { Text("10-digit mobile number") },
+                            prefix = {
+                                Text(
+                                    text = "+91  ",
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryBlue
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Phone, contentDescription = null, tint = PrimaryBlue)
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(22.dp))
+
+                        Button(
+                            onClick = {
+                                if (phoneNumber.length < 10) {
+                                    Toast.makeText(context, "Please enter a valid 10-digit number", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    step = 2
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                text = "Continue  ➔",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Login & Enter Transceiver",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = SurfaceGray)
+                            Text(
+                                text = "  OR  ",
+                                color = TextSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = SurfaceGray)
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        OutlinedButton(
+                            onClick = { onContinueAsGuest() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextDark),
+                            border = BorderStroke(1.dp, Color(0xFFD1D5DB)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                tint = PrimaryBlue,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Continue as Guest",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // OR Divider
-                Row(
+            } else {
+                // STEP 2: PERSONAL INFORMATION & AUTO-ASSIGNED ID
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    colors = CardDefaults.cardColors(containerColor = CardWhite),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = SurfaceGray)
-                    Text(
-                        text = "  OR  ",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = SurfaceGray)
-                }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Personal Information",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                // Continue as Guest / User Button
-                OutlinedButton(
-                    onClick = { onContinueAsGuest() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextDark),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD1D5DB)),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Continue as Guest / User",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                        Text(
+                            text = "Set up your photo, name and age.",
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // AUTO-ASSIGNED ID BADGE
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(PrimaryLight)
+                                .border(1.dp, PrimaryBlue.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Badge, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "ASSIGNED RADIO ID",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryDark,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = assignedRadioId,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = PrimaryBlue
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Photo Avatar Upload
+                        Box(
+                            modifier = Modifier.size(90.dp),
+                            contentAlignment = Alignment.BottomEnd
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(90.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, PrimaryBlue, CircleShape)
+                                    .background(SurfaceGray)
+                                    .clickable { photoPickerLauncher.launch("image/*") },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (hasPhoto && photoFile.exists()) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(photoFile)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Profile Photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Avatar",
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(46.dp)
+                                    )
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(PrimaryBlue)
+                                    .clickable { photoPickerLauncher.launch("image/*") },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Pick photo",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "Tap to upload photo",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        OutlinedTextField(
+                            value = fullName,
+                            onValueChange = { fullName = it },
+                            label = { Text("Full Name") },
+                            placeholder = { Text("e.g. Naman Tiwari") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryBlue)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = age,
+                            onValueChange = { input ->
+                                if (input.length <= 3 && input.all { it.isDigit() }) {
+                                    age = input
+                                }
+                            },
+                            label = { Text("Age") },
+                            placeholder = { Text("e.g. 21") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Cake, contentDescription = null, tint = PrimaryBlue)
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Button(
+                            onClick = {
+                                if (fullName.isBlank()) {
+                                    Toast.makeText(context, "Please enter your name", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    onCompleteProfile(
+                                        phoneNumber,
+                                        fullName.trim(),
+                                        age.ifBlank { "20" },
+                                        assignedRadioId
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                text = "Complete Setup & Enter App",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        TextButton(onClick = { step = 1 }) {
+                            Text("← Back to Phone Number", color = TextSecondary, fontSize = 12.sp)
+                        }
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // Security / Offline Assurance
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center

@@ -74,6 +74,22 @@ class BluetoothTransceiver(context: Context? = null) {
         Log.i(TAG, "BluetoothTransceiver initialized, adapter available: ${bluetoothAdapter != null}")
     }
 
+    fun isBluetoothEnabled(): Boolean {
+        return bluetoothAdapter?.isEnabled == true
+    }
+
+    @SuppressLint("MissingPermission")
+    fun getPairedDevices(): List<Pair<String, String>> {
+        val adapter = bluetoothAdapter ?: return emptyList()
+        return try {
+            adapter.bondedDevices?.map { device ->
+                (device.name ?: "Paired Device") to device.address
+            } ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     /**
      * Starts device discovery and populates discoveredDevices list.
      * Registers a BroadcastReceiver for ACTION_FOUND and automatically cancels after 12 seconds.
@@ -111,7 +127,7 @@ class BluetoothTransceiver(context: Context? = null) {
             discoveryReceiver = null
         }
 
-        _discoveredDevices.value = emptyList()
+        _discoveredDevices.value = getPairedDevices()
         _isScanning.value = true
 
         val receiver = DiscoveryReceiver()

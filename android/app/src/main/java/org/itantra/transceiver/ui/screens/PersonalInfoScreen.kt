@@ -48,8 +48,8 @@ fun PersonalInfoScreen(
     // Loaded profile values
     var name by remember { mutableStateOf(prefs.getString("name", "Naman Tiwari") ?: "Naman Tiwari") }
     var phone by remember { mutableStateOf(prefs.getString("phone", "9205917214") ?: "9205917214") }
-    var email by remember { mutableStateOf(prefs.getString("email", "namantiwari2384@gmail.com") ?: "namantiwari2384@gmail.com") }
-    var org by remember { mutableStateOf(prefs.getString("org", "Disaster Response / SIH 2026") ?: "Disaster Response / SIH 2026") }
+    var age by remember { mutableStateOf(prefs.getString("age", "21") ?: "21") }
+    val radioId = remember { prefs.getString("radio_id", "ITANTRA-7249") ?: "ITANTRA-7249" }
     var hasPhoto by remember { mutableStateOf(prefs.getBoolean("has_photo", false)) }
 
     // Edit mode toggle
@@ -58,8 +58,7 @@ fun PersonalInfoScreen(
     // Temporary editing values
     var editName by remember { mutableStateOf(name) }
     var editPhone by remember { mutableStateOf(phone) }
-    var editEmail by remember { mutableStateOf(email) }
-    var editOrg by remember { mutableStateOf(org) }
+    var editAge by remember { mutableStateOf(age) }
 
     val photoFile = remember { File(context.filesDir, PHOTO_FILE_NAME) }
     var photoUri by remember { mutableStateOf<Uri?>(if (photoFile.exists()) Uri.fromFile(photoFile) else null) }
@@ -113,8 +112,7 @@ fun PersonalInfoScreen(
                     onClick = {
                         editName = name
                         editPhone = phone
-                        editEmail = email
-                        editOrg = org
+                        editAge = age
                         isEditing = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight),
@@ -140,7 +138,8 @@ fun PersonalInfoScreen(
                     .size(110.dp)
                     .clip(CircleShape)
                     .border(2.dp, PrimaryBlue, CircleShape)
-                    .background(SurfaceGray),
+                    .background(SurfaceGray)
+                    .clickable { imagePickerLauncher.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
                 if (hasPhoto && photoFile.exists()) {
@@ -163,7 +162,7 @@ fun PersonalInfoScreen(
                 }
             }
 
-            // Camera upload icon overlay (active in edit mode or clickable)
+            // Camera upload icon overlay
             Box(
                 modifier = Modifier
                     .size(34.dp)
@@ -183,19 +182,34 @@ fun PersonalInfoScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // AUTO-ASSIGNED RADIO ID BADGE
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(PrimaryLight)
+                .border(1.dp, PrimaryBlue.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 14.dp, vertical = 6.dp)
+        ) {
+            Icon(Icons.Default.Badge, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "RADIO ID: $radioId",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = PrimaryBlue
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         if (!isEditing) {
-            // VIEW MODE: Clean Application Profile Cards
+            // VIEW MODE
             Text(
                 text = name,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextDark
-            )
-
-            Text(
-                text = org,
-                fontSize = 13.sp,
-                color = TextSecondary
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -216,14 +230,14 @@ fun PersonalInfoScreen(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "ACTIVE RESPONDER",
+                    text = "ACTIVE OPERATOR",
                     color = AccentGreen,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Profile Details Card
             Card(
@@ -234,7 +248,7 @@ fun PersonalInfoScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "ACCOUNT DETAILS",
+                        text = "OPERATOR DETAILS",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextSecondary,
@@ -246,44 +260,43 @@ fun PersonalInfoScreen(
                     ProfileDetailRow(
                         icon = Icons.Default.Phone,
                         label = "Phone Number",
-                        value = phone
+                        value = if (phone.startsWith("+91")) phone else "+91 $phone"
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = SurfaceGray)
 
                     ProfileDetailRow(
-                        icon = Icons.Default.Email,
-                        label = "Email Address",
-                        value = email
+                        icon = Icons.Default.Cake,
+                        label = "Age",
+                        value = "$age Years"
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = SurfaceGray)
 
                     ProfileDetailRow(
-                        icon = Icons.Default.Business,
-                        label = "Unit / Sector",
-                        value = org
+                        icon = Icons.Default.Badge,
+                        label = "Assigned Radio ID",
+                        value = radioId
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = SurfaceGray)
 
                     ProfileDetailRow(
-                        icon = Icons.Default.Radio,
-                        label = "Radio Call Sign",
-                        value = name.replace(" ", "-").uppercase()
+                        icon = Icons.Default.Wifi,
+                        label = "Mesh Frequency",
+                        value = "UDP 5005 Airlink"
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Big Edit Profile Button
+            // Edit Profile Button
             Button(
                 onClick = {
                     editName = name
                     editPhone = phone
-                    editEmail = email
-                    editOrg = org
+                    editAge = age
                     isEditing = true
                 },
                 modifier = Modifier
@@ -297,9 +310,7 @@ fun PersonalInfoScreen(
                 Text("Edit Profile Details", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
         } else {
-            // EDIT MODE: Editable Form Fields
-            Spacer(modifier = Modifier.height(10.dp))
-
+            // EDIT MODE
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = CardWhite),
@@ -320,7 +331,7 @@ fun PersonalInfoScreen(
                     OutlinedTextField(
                         value = editName,
                         onValueChange = { editName = it },
-                        label = { Text("Full Name / Call Sign") },
+                        label = { Text("Full Name") },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryBlue) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
@@ -343,23 +354,15 @@ fun PersonalInfoScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedTextField(
-                        value = editEmail,
-                        onValueChange = { editEmail = it },
-                        label = { Text("Email Address") },
-                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = PrimaryBlue) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        singleLine = true
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = editOrg,
-                        onValueChange = { editOrg = it },
-                        label = { Text("Organization / Unit") },
-                        leadingIcon = { Icon(Icons.Default.Business, contentDescription = null, tint = PrimaryBlue) },
+                        value = editAge,
+                        onValueChange = { input ->
+                            if (input.length <= 3 && input.all { it.isDigit() }) {
+                                editAge = input
+                            }
+                        },
+                        label = { Text("Age") },
+                        leadingIcon = { Icon(Icons.Default.Cake, contentDescription = null, tint = PrimaryBlue) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true
@@ -387,18 +390,16 @@ fun PersonalInfoScreen(
                     onClick = {
                         name = editName.trim()
                         phone = editPhone.trim()
-                        email = editEmail.trim()
-                        org = editOrg.trim()
+                        age = editAge.trim()
 
                         prefs.edit()
                             .putString("name", name)
                             .putString("phone", phone)
-                            .putString("email", email)
-                            .putString("org", org)
+                            .putString("age", age)
                             .apply()
 
                         isEditing = false
-                        Toast.makeText(context, "Profile saved successfully", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.weight(1f).height(46.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),

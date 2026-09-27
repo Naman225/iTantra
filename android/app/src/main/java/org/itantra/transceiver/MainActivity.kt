@@ -268,23 +268,29 @@ fun ITantraApp(
     var isLoggedIn by remember { mutableStateOf(prefs.getBoolean("is_logged_in", false)) }
 
     if (!isLoggedIn) {
-        // App starts with Login Screen
+        // App starts with 2-Step Login/Onboarding Screen
         LoginScreen(
-            onLoginSuccess = { name, unit ->
+            onCompleteProfile = { phone, name, age, radioId ->
                 prefs.edit()
+                    .putString("phone", phone)
                     .putString("name", name)
-                    .putString("org", unit)
+                    .putString("age", age)
+                    .putString("radio_id", radioId)
                     .putBoolean("is_logged_in", true)
                     .apply()
                 radio.currentUserName = name
                 isLoggedIn = true
             },
             onContinueAsGuest = {
+                val guestRadioId = "GUEST-${(1000..9999).random()}"
                 prefs.edit()
-                    .putString("name", "Guest User")
+                    .putString("name", "Guest Operator")
+                    .putString("phone", "9205917214")
+                    .putString("age", "25")
+                    .putString("radio_id", guestRadioId)
                     .putBoolean("is_logged_in", true)
                     .apply()
-                radio.currentUserName = "Guest User"
+                radio.currentUserName = "Guest Operator"
                 isLoggedIn = true
             }
         )

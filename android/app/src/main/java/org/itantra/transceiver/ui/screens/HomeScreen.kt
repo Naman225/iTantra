@@ -74,6 +74,7 @@ fun HomeScreen(
     var showHowToDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var isPhoneCallMode by remember { mutableStateOf(false) }
+    var isCallActive by remember { mutableStateOf(false) }
     var isCallMuted by remember { mutableStateOf(false) }
 
     val partialText by sttManager.partialText.collectAsState()
@@ -115,7 +116,7 @@ fun HomeScreen(
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isPttPressed || isPhoneCallMode) (1.08f + audioLevel * 0.22f) else 1f,
+        targetValue = if (isPttPressed || isCallActive) (1.08f + audioLevel * 0.22f) else 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(300, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -126,7 +127,7 @@ fun HomeScreen(
     // Ripple wave ring animation
     val rippleScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isPttPressed || isPhoneCallMode) 1.28f else 1f,
+        targetValue = if (isPttPressed || isCallActive) 1.28f else 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(650, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -247,9 +248,12 @@ fun HomeScreen(
                         .background(if (!isPhoneCallMode) PrimaryBlue else Color.Transparent)
                         .clickable {
                             if (isPhoneCallMode) {
+                                if (isCallActive) {
+                                    isCallActive = false
+                                    sttManager.isPhoneMode = false
+                                    sttManager.stopListening()
+                                }
                                 isPhoneCallMode = false
-                                sttManager.isPhoneMode = false
-                                sttManager.stopListening()
                             }
                         }
                         .padding(vertical = 8.dp),
@@ -283,9 +287,7 @@ fun HomeScreen(
                         .clickable {
                             if (!isPhoneCallMode) {
                                 isPhoneCallMode = true
-                                sttManager.isPhoneMode = true
-                                onStartPtt(selectedLangId)
-                                Toast.makeText(context, "Phone Call Mode: Hands-Free Voice Activated", Toast.LENGTH_SHORT).show()
+                                isCallActive = false // Show dialer first, don't call automatically
                             }
                         }
                         .padding(vertical = 8.dp),
@@ -314,22 +316,22 @@ fun HomeScreen(
 
         // Live Speech Recognition Status Banner
         AnimatedVisibility(
-            visible = isPttPressed || isPhoneCallMode || partialText.isNotBlank() || isProcessing,
+            visible = isPttPressed || isCallActive || partialText.isNotBlank() || isProcessing,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = if (isPhoneCallMode) Color(0xFFE8F5E9) else PrimaryLight),
+                colors = CardDefaults.cardColors(containerColor = if (isCallActive) Color(0xFFE8F5E9) else PrimaryLight),
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, (if (isPhoneCallMode) AccentGreen else PrimaryBlue).copy(alpha = 0.3f))
+                border = BorderStroke(1.dp, (if (isCallActive) AccentGreen else PrimaryBlue).copy(alpha = 0.3f))
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (isProcessing) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
-                                color = if (isPhoneCallMode) AccentGreen else PrimaryBlue,
+                                color = if (isCallActive) AccentGreen else PrimaryBlue,
                                 strokeWidth = 2.dp
                             )
                         } else {
@@ -342,10 +344,10 @@ fun HomeScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isPhoneCallMode) "📞 Hands-Free Call • VAD Auto-Detecting Speech (${TantraPacket.LANG_NAMES[selectedLangId]})"
+                            text = if (isCallActive) "📞 Hands-Free Call • VAD Auto-Detecting Speech (${TantraPacket.LANG_NAMES[selectedLangId]})"
                             else if (isProcessing) "Processing audio transcription…"
                             else "Live Transcription (${TantraPacket.LANG_NAMES[selectedLangId]})",
-                            color = if (isPhoneCallMode) Color(0xFF2E7D32) else PrimaryBlue,
+                            color = if (isCallActive) Color(0xFF2E7D32) else PrimaryBlue,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -355,7 +357,7 @@ fun HomeScreen(
                         text = when {
                             partialText.isNotBlank() -> "\"$partialText\""
                             isProcessing -> "Transcribing speech into data packet…"
-                            isPhoneCallMode -> "Listening continuously… speak naturally without holding button"
+                            isCallActive -> "Listening continuously… speak naturally without holding button"
                             else -> "Listening… speak now"
                         },
                         color = TextDark,
@@ -374,95 +376,215 @@ fun HomeScreen(
             contentAlignment = Alignment.Center
         ) {
             if (isPhoneCallMode) {
-                // PHONE CALL MODE: Hands-Free VAD with call controls
-                Box(
-                    modifier = Modifier
-                        .size(230.dp)
-                        .scale(rippleScale)
-                        .clip(CircleShape)
-                        .background(AccentGreen.copy(alpha = 0.15f))
-                )
-                Box(
-                    modifier = Modifier
-                        .size(195.dp)
-                        .scale(pulseScale)
-                        .clip(CircleShape)
-                        .background(AccentGreen.copy(alpha = 0.28f))
-                )
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
+                if (!isCallActive) {
+                    // READY TO DIAL STATE: Option to dial first
+                    Card(
                         modifier = Modifier
-                            .size(165.dp)
-                            .shadow(16.dp, CircleShape, spotColor = AccentGreen)
-                            .clip(CircleShape)
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(AccentGreen, Color(0xFF1B5E20))
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth(0.92f)
+                            .padding(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardWhite),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.Call,
-                                contentDescription = "Active Call",
-                                tint = Color.White,
-                                modifier = Modifier.size(46.dp)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(68.dp)
+                                    .clip(CircleShape)
+                                    .background(AccentGreen.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PhoneInTalk,
+                                    contentDescription = null,
+                                    tint = AccentGreen,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = "Full-Duplex Phone Call",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = TextDark
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "CALL ACTIVE",
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 14.sp
+                                text = "Hands-free voice with Voice Activity Detection (VAD)",
+                                fontSize = 12.sp,
+                                color = TextSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Channel / Language Info Pill
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(SurfaceGray)
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Language, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Language: ${TantraPacket.LANG_NAMES[selectedLangId]}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextDark
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Change",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryBlue,
+                                    modifier = Modifier.clickable { showLanguageDialog = true }
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // DIAL BUTTON
+                            Button(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    isCallActive = true
+                                    isCallMuted = false
+                                    sttManager.isPhoneMode = true
+                                    audioPlayer.playRogerBeep()
+                                    onStartPtt(selectedLangId)
+                                    Toast.makeText(context, "Call Connected • Speak naturally", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
+                                shape = RoundedCornerShape(28.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth(0.85f)
+                                    .height(54.dp)
+                            ) {
+                                Icon(Icons.Default.Call, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text("DIAL / START CALL", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Hands-Free VAD",
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontSize = 11.sp
+                                text = "Tap Dial to begin hands-free conversation. Your voice transmits automatically when you speak.",
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                lineHeight = 15.sp
                             )
                         }
                     }
+                } else {
+                    // IN-CALL ACTIVE STATE
+                    Box(
+                        modifier = Modifier
+                            .size(230.dp)
+                            .scale(rippleScale)
+                            .clip(CircleShape)
+                            .background(AccentGreen.copy(alpha = 0.15f))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(195.dp)
+                            .scale(pulseScale)
+                            .clip(CircleShape)
+                            .background(AccentGreen.copy(alpha = 0.28f))
+                    )
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Phone Call Controls: Mute and End Call
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                isCallMuted = !isCallMuted
-                                if (isCallMuted) sttManager.stopListening() else onStartPtt(selectedLangId)
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, Color(0xFFD1D5DB))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(165.dp)
+                                .shadow(16.dp, CircleShape, spotColor = AccentGreen)
+                                .clip(CircleShape)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(AccentGreen, Color(0xFF1B5E20))
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                if (isCallMuted) Icons.Default.MicOff else Icons.Default.Mic,
-                                contentDescription = null,
-                                tint = if (isCallMuted) SOSRed else TextDark,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(if (isCallMuted) "Unmute" else "Mute", color = TextDark, fontSize = 12.sp)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = if (isCallMuted) Icons.Default.MicOff else Icons.Default.Call,
+                                    contentDescription = "Active Call",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(46.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (isCallMuted) "MUTED" else "IN CALL",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 15.sp
+                                )
+                                Text(
+                                    text = if (isCallMuted) "Mic Paused" else "Hands-Free VAD",
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
 
-                        Button(
-                            onClick = {
-                                isPhoneCallMode = false
-                                sttManager.isPhoneMode = false
-                                sttManager.stopListening()
-                                Toast.makeText(context, "Call Ended", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = SOSRed),
-                            shape = RoundedCornerShape(8.dp)
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // In-Call Controls: Mute and End Call
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.CallEnd, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("End Call", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            OutlinedButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    isCallMuted = !isCallMuted
+                                    if (isCallMuted) {
+                                        sttManager.stopListening()
+                                        Toast.makeText(context, "Microphone Muted", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        onStartPtt(selectedLangId)
+                                        Toast.makeText(context, "Microphone Active", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, if (isCallMuted) WarningAmber else Color(0xFFD1D5DB)),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isCallMuted) Color(0xFFFEF3C7) else CardWhite
+                                )
+                            ) {
+                                Icon(
+                                    if (isCallMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                                    contentDescription = null,
+                                    tint = if (isCallMuted) Color(0xFFB45309) else TextDark,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(if (isCallMuted) "Unmute" else "Mute", color = if (isCallMuted) Color(0xFFB45309) else TextDark, fontSize = 13.sp)
+                            }
+
+                            Button(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    isCallActive = false
+                                    sttManager.isPhoneMode = false
+                                    sttManager.stopListening()
+                                    audioPlayer.playRogerBeep()
+                                    Toast.makeText(context, "Call Ended", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = SOSRed),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.CallEnd, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("End Call", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

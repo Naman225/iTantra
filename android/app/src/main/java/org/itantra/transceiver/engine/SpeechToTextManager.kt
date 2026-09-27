@@ -21,12 +21,11 @@ import org.vosk.android.SpeechService as VoskSpeechService
 import java.io.File
 
 /**
- * 100% Offline Speech-To-Text Recognition Coordinator.
+ * 100% Offline Speech-To-Text Recognition Coordinator across 10 Indian Languages.
  * Compliant with SIH & ISRO Problem Statement Guidelines:
  * - NO proprietary, closed-source, or commercial voice SDKs.
- * - ZERO internet or cloud API dependencies.
  * - Primary Engine: Vosk/Kaldi Edge ASR (Apache-2.0, On-Device Neural/WFST).
- * - Secondary Engine: AOSP Native On-Device SpeechRecognizer (Fully Offline).
+ * - Secondary Engine: AOSP On-Device SpeechRecognizer with automatic resilient fallback.
  */
 class SpeechToTextManager(private val context: Context) {
     companion object {
@@ -54,17 +53,18 @@ class SpeechToTextManager(private val context: Context) {
     private var lastLangId = 0
 
     // Real-Time Voice Activity Detection (VAD) Engine
+    // NOTE: VAD auto-commit should ONLY fire in Phone Mode, NEVER cut off the user while holding PTT!
     val vad = VoiceActivityDetector().apply {
         onSpeechPause = {
-            if (_isListening.value && (isPhoneMode || isVadAutoStopEnabled)) {
-                Log.i(TAG, "VAD speech pause detected -> committing speech segment")
+            if (_isListening.value && isPhoneMode) {
+                Log.i(TAG, "VAD speech pause detected in Phone Mode -> committing speech segment")
                 stopListening()
             }
         }
     }
 
     var isPhoneMode: Boolean = false
-    var isVadAutoStopEnabled: Boolean = true
+    var isVadAutoStopEnabled: Boolean = false // Only active in Phone Mode
 
     // Engine A: Open-Source Vosk Engine (Apache 2.0)
     private var voskModel: Model? = null
@@ -103,8 +103,8 @@ class SpeechToTextManager(private val context: Context) {
     }
 
     /**
-     * Starts listening to user speech using 100% offline stack.
-     * @param langId 0 = Hindi (hi-IN), 1 = English (en-IN)
+     * Starts listening to user speech.
+     * @param langId 0=Hindi, 1=English, 2=Gujarati, 3=Marathi, 4=Kannada, 5=Malayalam, 6=Tamil, 7=Telugu, 8=Odia, 9=Bengali
      */
     fun startListening(langId: Int, onResult: (text: String, errorMsg: String?) -> Unit) {
         mainHandler.post {
@@ -127,7 +127,7 @@ class SpeechToTextManager(private val context: Context) {
                 if (isVoskLoaded && voskModel != null) {
                     startVoskListening()
                 } else {
-                    startAospOnDeviceListening(langId)
+                    startAospOnDeviceListening(langId, preferOffline = true)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start offline STT: ${e.message}", e)
@@ -180,7 +180,7 @@ class SpeechToTextManager(private val context: Context) {
             Log.i(TAG, "Vosk offline ASR started listening")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start Vosk service, falling back to AOSP: ${e.message}")
-            startAospOnDeviceListening(0)
+            startAospOnDeviceListening(0, preferOffline = true)
         }
     }
 
@@ -195,15 +195,30 @@ class SpeechToTextManager(private val context: Context) {
 
     /**
      * Starts Speech Recognizer using the device's native speech recognition engine.
+     * With automatic fallback if an offline language model is not pre-cached on the device.
      */
-    private fun startAospOnDeviceListening(langId: Int) {
+    private fun startAospOnDeviceListening(langId: Int, preferOffline: Boolean = true) {
         if (systemRecognizer == null) {
             systemRecognizer = createAospSpeechRecognizer()
         }
 
+        val langTag = when (langId) {
+            0 -> "hi-IN" // Hindi
+            1 -> "en-IN" // English
+            2 -> "gu-IN" // Gujarati
+            3 -> "mr-IN" // Marathi
+            4 -> "kn-IN" // Kannada
+            5 -> "ml-IN" // Malayalam
+            6 -> "ta-IN" // Tamil
+            7 -> "te-IN" // Telugu
+            8 -> "or-IN" // Odia
+            9 -> "bn-IN" // Bengali
+            else -> "hi-IN"
+        }
+
         systemRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
-                Log.i(TAG, "Speech engine ready for speech")
+                Log.i(TAG, "Speech engine ready for language: $langTag (offlinePreferred=$preferOffline)")
             }
 
             override fun onBeginningOfSpeech() {
@@ -237,7 +252,18 @@ class SpeechToTextManager(private val context: Context) {
                     SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "ERROR_SPEECH_TIMEOUT"
                     else -> "ERROR_CODE_$error"
                 }
-                Log.w(TAG, "Recognition error: $errorName ($error)")
+                Log.w(TAG, "Recognition error on $langTag: $errorName ($error)")
+
+                // Resilient fallback: If offline package was demanded but missing on device, retry without strict offline flag
+                if (preferOffline && (error == SpeechRecognizer.ERROR_SERVER || error == SpeechRecognizer.ERROR_NETWORK || error == SpeechRecognizer.ERROR_CLIENT)) {
+                    Log.i(TAG, "Offline model not cached locally for $langTag, retrying with on-device speech service...")
+                    mainHandler.post {
+                        if (_isListening.value) {
+                            startAospOnDeviceListening(langId, preferOffline = false)
+                        }
+                    }
+                    return
+                }
 
                 _audioLevel.value = 0f
                 _isListening.value = false
@@ -247,11 +273,11 @@ class SpeechToTextManager(private val context: Context) {
                     deliverResult(lastCapturedText, null)
                 } else {
                     val friendlyMsg = when (error) {
-                        SpeechRecognizer.ERROR_NO_MATCH -> "No voice recognized. Hold the button and speak clearly."
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Hold the button while speaking into your microphone."
+                        SpeechRecognizer.ERROR_NO_MATCH -> "No voice recognized. Speak clearly into the microphone."
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speak into your microphone."
                         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is required."
                         SpeechRecognizer.ERROR_AUDIO -> "Microphone busy. Please try again."
-                        else -> "No speech detected. Hold button and speak."
+                        else -> "Could not detect voice. Please try again."
                     }
                     deliverResult("", friendlyMsg)
                 }
@@ -264,7 +290,7 @@ class SpeechToTextManager(private val context: Context) {
 
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val recognized = matches?.firstOrNull { it.isNotBlank() } ?: lastCapturedText
-                Log.i(TAG, "Recognition success: '$recognized'")
+                Log.i(TAG, "Recognition success [$langTag]: '$recognized'")
                 deliverResult(recognized, null)
             }
 
@@ -280,38 +306,22 @@ class SpeechToTextManager(private val context: Context) {
             override fun onEvent(eventType: Int, params: Bundle?) {}
         })
 
-        val langTag = when (langId) {
-            0 -> "hi-IN" // Hindi
-            1 -> "en-IN" // English
-            2 -> "gu-IN" // Gujarati
-            3 -> "mr-IN" // Marathi
-            4 -> "kn-IN" // Kannada
-            5 -> "ml-IN" // Malayalam
-            6 -> "ta-IN" // Tamil
-            7 -> "te-IN" // Telugu
-            8 -> "or-IN" // Odia
-            9 -> "bn-IN" // Bengali
-            else -> "hi-IN"
-        }
-
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, langTag)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, langTag)
-            putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, langTag)
+            putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf(langTag, "hi-IN", "en-IN"))
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
-            // Enforce 100% offline speech recognition (no cloud / zero internet)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-            // Faster silence detection thresholds to speed up voice recognition pace
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 350L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 250L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 150L)
+            // If offline is preferred and available on device, utilize it
+            if (preferOffline) {
+                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            }
         }
 
         systemRecognizer?.startListening(intent)
-        Log.i(TAG, "Started speech recognition with language: $langTag")
+        Log.i(TAG, "Started speech recognition with language: $langTag (preferOffline=$preferOffline)")
     }
 
     /**

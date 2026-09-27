@@ -64,51 +64,52 @@ class MainActivity : ComponentActivity() {
     private var pendingOnSent: ((TantraPacket) -> Unit)? = null
 
     // 3-Tier Keyword Detection: Red SOS vs Yellow Alert across ALL 10 Mandated Indian Languages
-    // Includes Native Scripts (Devanagari, Tamil, Telugu, Bengali, Gujarati, Kannada, Malayalam, Odia) + Latin Transliterations
+    // Includes Native Scripts (Devanagari, Tamil, Telugu, Bengali, Gujarati, Kannada, Malayalam, Odia) + Latin Transliterations + Common inflected forms
     private val sosKeywords = listOf(
         // English / International
-        "sos", "help", "emergency", "mayday", "distress", "evacuate",
+        "sos", "s.o.s", "help", "emergency", "mayday", "distress", "evacuate", "rescue",
         // Hindi & Marathi (Devanagari)
-        "बचाओ", "आपातकालीन", "संकट", "मदद", "तुरंत", "सहायता", "वाचवा", "आणीबाणी",
+        "एसओएस", "एस ओ एस", "हेल्प", "इमरजेंसी", "रेस्क्यू", "बचाओ", "बचाव", "आपातकाल", "आपातकालीन", "संकट", "मदद", "तुरंत", "सहायता", "वाचवा", "आणीबाणी",
         // Tamil
-        "காப்பாற்றுங்கள்", "காப்பாது", "உதவி", "அவசரம்", "ஆபத்து",
+        "காப்பாற்றுங்கள்", "காப்பாது", "உதவி", "அவசரம்", "ஆபத்து", "மீட்பு",
         // Telugu
-        "కాపాడండి", "సహాయం", "అత్యవసరం", "ఆపద",
+        "కాపాడండి", "సహాయం", "అత్యవసరం", "ఆపద", "రక్షించండి",
         // Bengali
-        "বাঁচাও", "জরুরি", "সাহায্য",
+        "বাঁচাও", "জরুরি", "সাহায্য", "উদ্ধার",
         // Gujarati
-        "બચાવો", "મદદ", "કટોકટી",
+        "બચાવો", "મદદ", "કટોકટી", "બચાવ",
         // Kannada
-        "ಉಳಿಸಿ", "ಸಹಾಯ", "ತುರ್ತು",
+        "ಉಳಿಸಿ", "ಸಹಾಯ", "ತುರ್ತು", "ಕಾಪಾಡಿ",
         // Malayalam
         "രക്ഷിക്കൂ", "സഹായം", "അടിയന്തരാവസ്ഥ",
         // Odia
-        "ବଞ୍ଚାଅ", "ସାହାଯ୍ୟ", "ଜରୁରୀକାଳୀନ",
+        "ବଞ୍ଚାଅ", "ସାହାଯ୍ୟ", "ଜରୁରୀକାଳୀନ", "ରକ୍ଷାକର",
         // Transliterations
-        "bachao", "aapatkaleen", "kaapadu", "kaapaathunga", "aabathu", "udhavi", "vachva", "shishya"
+        "bachao", "bachav", "madad", "aapatkal", "aapatkaleen", "kaapadu", "kaapaathunga", "aabathu", "udhavi", "vachva", "shishya"
     )
 
     private val alertKeywords = listOf(
         // English / International
-        "alert", "warning", "danger", "caution", "hazard", "threat",
-        // Hindi & Marathi (Devanagari)
-        "खतरा", "चेतावनी", "सावधान", "सतर्क", "धोका", "सतर्कता",
+        "alert", "alerts", "warning", "warnings", "danger", "dangerous", "caution", "hazard", "threat",
+        // Hindi & Marathi (Devanagari - including transliterated spoken words like अलर्ट, वार्निंग)
+        "खतरा", "खतरे", "खतरों", "खतरनाक", "अलर्ट", "अलर्ट्स", "चेतावनी", "सावधान", "सावधानी", "सतर्क", "सतर्कता", "धोका", "धोके", "वार्निंग",
         // Tamil
-        "எச்சரிக்கை", "கவனம்", "அபாயம்",
+        "எச்சரிக்கை", "கவனம்", "அபாயம்", "எச்சரிக்கை மணி",
         // Telugu
-        "ప్రమాదం", "హెచ్చరిక", "జాగ్రత్త",
+        "ప్రమాదం", "హెచ్చరిక", "జాగ్రత్త", "అప్రమత్తత",
         // Bengali
-        "বিপদ", "সতর্কতা", "হুঁশিয়ার",
+        "বিপদ", "সতর্কতা", "হুঁশিয়ার", "অ্যালার্ট",
         // Gujarati
-        "ખતરો", "ચેતવણી", "સાવધાન",
+        "ખતરો", "ચેતવણી", "સાવધાન", "જોખમ",
         // Kannada
         "ಅಪಾಯ", "ಎಚ್ಚರಿಕೆ", "ಜಾಗರೂಕರಾಗಿರಿ",
         // Malayalam
-        "അപകടം", "ജാഗ്രത", "മുന്നറിയിപ്പ്",
+        "அபകടം", "ജാഗ്രത", "മുന്നറിയിപ്പ്",
         // Odia
         "ବିପଦ", "ଚେତାବନୀ", "ସତର୍କତା",
-        // Transliterations
-        "khatra", "chetawani", "savdhan", "dhoka", "eccarikkai", "abaththukkuriyeedu", "kavanam", "abayam"
+        // Transliterations & Romanized Hindi/Tamil/Telugu/etc.
+        "khatra", "khatre", "khatron", "khatarnak", "chetawani", "savdhan", "dhoka", "eccarikkai",
+        "abaththukkuriyeedu", "kavanam", "abayam", "pramadham", "hoshra", "bipod", "jokham", "apaya"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -204,31 +205,40 @@ class MainActivity : ComponentActivity() {
         val trimmedText = text.trim()
         if (trimmedText.isNotBlank()) {
             val lowerText = trimmedText.lowercase()
+            // Normalize punctuation so terms like "खतरा!", "अलर्ट!", "alert," match reliably
+            val cleanText = lowerText
+                .replace("।", " ")
+                .replace(".", " ")
+                .replace(",", " ")
+                .replace("!", " ")
+                .replace("?", " ")
+                .replace("-", " ")
+                .replace("_", " ")
+                .replace("  ", " ")
 
             // 3-Tier Classification:
             // Tier 1: Red SOS
-            val isAutoSos = sosKeywords.any { lowerText.contains(it) }
+            val isAutoSos = sosKeywords.any { cleanText.contains(it) || lowerText.contains(it) }
             val isEmergency = manualEmergency || isAutoSos
 
             // Tier 2: Yellow Alert (if not Red SOS)
-            val isAlert = if (isEmergency) false else alertKeywords.any { lowerText.contains(it) }
+            val isAlert = if (isEmergency) false else alertKeywords.any { cleanText.contains(it) || lowerText.contains(it) }
 
-            if (isEmergency && !manualEmergency) {
+            if (isEmergency) {
                 runOnUiThread {
                     Toast.makeText(this, "🚨 Red SOS Distress triggered by voice keyword!", Toast.LENGTH_SHORT).show()
                 }
+                notificationHelper.showMessageNotification("🚨 Emergency SOS", trimmedText, isEmergency = true, isAlert = false)
             } else if (isAlert) {
                 runOnUiThread {
                     Toast.makeText(this, "⚠️ Yellow Tactical Alert triggered by voice keyword!", Toast.LENGTH_SHORT).show()
                 }
+                notificationHelper.showMessageNotification("⚠️ Yellow Tactical Alert", trimmedText, isEmergency = false, isAlert = true)
             }
 
             val detected = TantraPacket.detectLanguage(trimmedText)
-            val langToUse = if (selectedLangId == 0 || selectedLangId == 1 || selectedLangId == 6) {
-                selectedLangId
-            } else {
-                if (detected in listOf(0, 1, 6)) detected else selectedLangId
-            }
+            // Use user-selected language or detected Indic script
+            val langToUse = if (selectedLangId in 0..9) selectedLangId else detected
 
             val packet = TantraPacket(
                 text = trimmedText,
@@ -245,9 +255,17 @@ class MainActivity : ComponentActivity() {
         } else {
             if (manualEmergency) {
                 val emergencyText = when (selectedLangId) {
-                    1 -> "Emergency SOS: Distress beacon activated!"
-                    6 -> "ஆபத்து சிக்னல்: அவசர உதவி தேவை!"
-                    else -> "आपातकालीन संदेश: संकट संकेत सक्रिय किया गया तुरंत सहायता भेजें!"
+                    0 -> "आपातकालीन संदेश: संकट संकेत सक्रिय किया गया तुरंत सहायता भेजें!" // Hindi
+                    1 -> "Emergency SOS: Distress beacon activated immediate assistance required!" // English
+                    2 -> "કટોકટી સંદેશ: તાત્કાલિક સહાય મોકલો!" // Gujarati
+                    3 -> "आणीबाणी संदेश: संकट सिग्नल सक्रिय झाला आहे त्वरित मदत पाठवा!" // Marathi
+                    4 -> "ತುರ್ತು ಸಂದೇಶ: ತಕ್ಷಣವೇ ಸಹಾಯ ಕಳುಹಿಸಿ!" // Kannada
+                    5 -> "അടിയന്തര സന്ദേശം: ഉടൻ സഹായം അയക്കുക!" // Malayalam
+                    6 -> "ஆபத்து சிக்னல்: அவசர உதவி தேவை உடனே வாருங்கள்!" // Tamil
+                    7 -> "అత్యవసర సందేశం: వెంటనే సహాయం పంపండి!" // Telugu
+                    8 -> "ଜରୁରୀକାଳୀନ ବାର୍ତ୍ତା: ତୁରନ୍ତ ସାହାଯ୍ୟ ପଠାନ୍ତୁ!" // Odia
+                    9 -> "জরুরি বার্তা: অবিলম্বে সাহায্য পাঠান!" // Bengali
+                    else -> "Emergency SOS: Distress beacon activated!"
                 }
                 val packet = TantraPacket(
                     text = emergencyText,
@@ -593,6 +611,7 @@ fun ITantraApp(
                             onNavigateToConnect = { currentPage = NavPage.CONNECT },
                             onNavigateToProfile = { currentPage = NavPage.PROFILE },
                             onNavigateToAbout = { currentPage = NavPage.ABOUT },
+                            onNavigateToContact = { currentPage = NavPage.CONTACT },
                             onLogoutOrLogin = {
                                 prefs.edit().putBoolean("is_logged_in", false).apply()
                                 isLoggedIn = false

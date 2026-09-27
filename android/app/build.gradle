@@ -24,8 +24,23 @@ android {
         }
     }
 
-    buildTypes {
+    signingConfigs {
         release {
+            // Sign with debug keystore for easy sideloading and zero-warning deployment
+            storeFile file("${System.getProperty('user.home')}/.android/debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.release
+        }
+        release {
+            signingConfig signingConfigs.release
+            debuggable false
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -51,6 +66,9 @@ android {
     packaging {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }

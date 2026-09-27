@@ -1,9 +1,46 @@
 <resources>
     <string name="app_name">iTantra</string>
-    <string name="app_tagline">Neural Transceiver Radio Access</string>
-    <string name="ptt_hold_to_talk">HOLD TO TALK</string>
-    <string name="ptt_transmitting">TRANSMITTING...</string>
-    <string name="mode_ptt">PTT Walkie-Talkie</string>
-    <string name="mode_phone">Phone Mode (VAD)</string>
-    <string name="sos_alert">EMERGENCY SOS</string>
+    <string name="app_tagline">Smart Voice Transceiver</string>
+
+    <!-- Home Screen -->
+    <string name="ptt_hold_to_talk">Hold to Talk</string>
+    <string name="ptt_transmitting">Transmitting…</string>
+    <string name="ptt_release">Release to Send</string>
+    <string name="sos_emergency">SOS Emergency</string>
+    <string name="type_message_hint">Type your message…</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_connect">Connect Device</string>
+    <string name="nav_contact">Contact Us</string>
+    <string name="nav_profile">Personal Info</string>
+    <string name="nav_about">About</string>
+
+    <!-- Contact Us -->
+    <string name="contact_email">namantiwari2384@gmail.com</string>
+    <string name="contact_phone">9205917214</string>
+    <string name="contact_github">https://github.com/Naman225/iTantra</string>
+    <string name="contact_made_by">Naman Tiwari</string>
+    <string name="contact_project">Smart India Hackathon — iTantra</string>
+
+    <!-- Personal Info -->
+    <string name="profile_name">Full Name</string>
+    <string name="profile_phone">Phone Number</string>
+    <string name="profile_email">Email Address</string>
+    <string name="profile_org">Organization / Unit</string>
+    <string name="profile_save">Save Profile</string>
+    <string name="profile_upload_photo">Upload Photo</string>
+
+    <!-- Connect Device -->
+    <string name="connect_wifi">WiFi Hotspot</string>
+    <string name="connect_bluetooth">Bluetooth</string>
+    <string name="connect_scan">Scan for Devices</string>
+    <string name="connect_status_connected">Connected</string>
+    <string name="connect_status_scanning">Scanning…</string>
+    <string name="connect_status_disconnected">Disconnected</string>
+
+    <!-- About -->
+    <string name="about_version">Version 1.0.0</string>
+    <string name="about_description">iTantra is an ultra-low-bitrate smart voice transceiver for disaster response and tactical communication. It converts speech to text locally, transmits tiny packets over constrained radio links, and synthesizes natural voice on the receiver — all 100%% offline.</string>
+    <string name="made_in_india">Made with ❤️ in India</string>
 </resources>

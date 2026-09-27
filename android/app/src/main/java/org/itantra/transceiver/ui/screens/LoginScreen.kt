@@ -453,32 +453,45 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // DATE OF BIRTH FIELD (Formatted DD/MM/YYYY)
-                        OutlinedTextField(
-                            value = dob,
-                            onValueChange = { input ->
-                                // Auto-format digits into DD/MM/YYYY
-                                val digitsOnly = input.filter { it.isDigit() }.take(8)
-                                val formatted = buildString {
-                                    for (i in digitsOnly.indices) {
-                                        append(digitsOnly[i])
-                                        if ((i == 1 || i == 3) && i < digitsOnly.length - 1) {
-                                            append("/")
-                                        }
+                        val calendar = remember { java.util.Calendar.getInstance() }
+                        val datePickerDialog = remember {
+                            android.app.DatePickerDialog(
+                                context,
+                                { _, selectedYear, selectedMonth, selectedDay ->
+                                    dob = "%02d/%02d/%04d".format(selectedDay, selectedMonth + 1, selectedYear)
+                                },
+                                2002, 6, 15
+                            )
+                        }
+
+                        // DATE OF BIRTH FIELD (Calendar Picker Dialog)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { datePickerDialog.show() }
+                        ) {
+                            OutlinedTextField(
+                                value = dob,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Date of Birth") },
+                                placeholder = { Text("Tap to select date from calendar") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue)
+                                },
+                                trailingIcon = {
+                                    IconButton(onClick = { datePickerDialog.show() }) {
+                                        Icon(Icons.Default.DateRange, contentDescription = "Open Calendar", tint = PrimaryBlue)
                                     }
-                                }
-                                dob = formatted
-                            },
-                            label = { Text("Date of Birth (DD/MM/YYYY)") },
-                            placeholder = { Text("DD/MM/YYYY e.g. 15/08/2002") },
-                            leadingIcon = {
-                                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue)
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            singleLine = true
-                        )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = PrimaryBlue,
+                                    unfocusedBorderColor = Color(0xFFD1D5DB)
+                                )
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(20.dp))
 

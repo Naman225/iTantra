@@ -368,27 +368,42 @@ fun PersonalInfoScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    OutlinedTextField(
-                        value = editDob,
-                        onValueChange = { input ->
-                            val digitsOnly = input.filter { it.isDigit() }.take(8)
-                            val formatted = buildString {
-                                for (i in digitsOnly.indices) {
-                                    append(digitsOnly[i])
-                                    if ((i == 1 || i == 3) && i < digitsOnly.length - 1) {
-                                        append("/")
-                                    }
+                    val editCalendar = remember { java.util.Calendar.getInstance() }
+                    val editDatePickerDialog = remember {
+                        android.app.DatePickerDialog(
+                            context,
+                            { _, selectedYear, selectedMonth, selectedDay ->
+                                editDob = "%02d/%02d/%04d".format(selectedDay, selectedMonth + 1, selectedYear)
+                            },
+                            2002, 6, 15
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { editDatePickerDialog.show() }
+                    ) {
+                        OutlinedTextField(
+                            value = editDob,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Date of Birth") },
+                            placeholder = { Text("Tap to select date from calendar") },
+                            leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue) },
+                            trailingIcon = {
+                                IconButton(onClick = { editDatePickerDialog.show() }) {
+                                    Icon(Icons.Default.DateRange, contentDescription = "Open Calendar", tint = PrimaryBlue)
                                 }
-                            }
-                            editDob = formatted
-                        },
-                        label = { Text("Date of Birth (DD/MM/YYYY)") },
-                        leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        singleLine = true
-                    )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryBlue,
+                                unfocusedBorderColor = Color(0xFFD1D5DB)
+                            )
+                        )
+                    }
                 }
             }
 

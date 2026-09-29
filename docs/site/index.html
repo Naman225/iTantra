@@ -1,432 +1,344 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iTantra — Indian Multilingual Neural Transceiver Radio Access (100% Offline)</title>
-  <meta name="description" content="iTantra is an ultra-low-bitrate, 100% offline tactical neural voice transceiver platform built for disaster response and defense over constrained radio links across 10 Indian languages.">
-  <meta name="keywords" content="iTantra, Smart India Hackathon 2026, ISRO, PS 26104, tactical transceiver, low bitrate voice, Indic TTS, Indic STT, LoRa mesh, disaster response communications, walkie-talkie">
-  <meta name="author" content="Naman Tiwari — iTantra Engineering Team">
-  <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://github.com/Naman225/iTantra">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iTantra — Indian Multilingual Neural Transceiver Radio Access</title>
+<meta name="description" content="iTantra is an ultra-low-bitrate, 100% offline tactical neural voice transceiver platform built for disaster response and defense radio links across 10 Indian languages.">
+<meta name="keywords" content="iTantra, Smart India Hackathon 2026, ISRO, PS 26104, tactical transceiver, low bitrate voice, Indic TTS, Indic STT, LoRa mesh, disaster communications">
+<meta name="author" content="Naman Tiwari — iTantra Engineering Team">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://github.com/Naman225/iTantra">
 
-  <!-- Open Graph -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="iTantra — Smart Voice Transceiver Across 10 Indian Languages">
-  <meta property="og:description" content="Analog voice requires 64,000 bps. iTantra transmits it in just 50 bytes with sub-second turnaround — 100% offline without cellular or internet.">
-  <meta property="og:image" content="assets/judge_scan_to_install_slide.png">
-  <meta property="og:url" content="https://github.com/Naman225/iTantra">
-  <meta property="og:site_name" content="iTantra">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="iTantra — Smart Voice Transceiver Across 10 Indian Languages">
+<meta property="og:description" content="Analog voice takes 64,000 bps. iTantra transmits it in 50 bytes with sub-second turnaround — 100% offline without cellular or cloud.">
+<meta property="og:image" content="assets/judge_scan_to_install_slide.png">
+<meta property="og:url" content="https://github.com/Naman225/iTantra">
+<meta property="og:site_name" content="iTantra">
 
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="iTantra — 100% Offline Tactical Multilingual Voice Transceiver">
-  <meta name="twitter:description" content="Built for disaster rescue & defense radio access across 10 Indian regional languages. 99.9% bandwidth saved.">
-  <meta name="twitter:image" content="assets/judge_scan_to_install_slide.png">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="iTantra — 100% Offline Tactical Multilingual Voice Transceiver">
+<meta name="twitter:description" content="Built for disaster rescue & defense radio access across 10 Indian regional languages. 99.9% bandwidth saved.">
+<meta name="twitter:image" content="assets/judge_scan_to_install_slide.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%232563EB'/><path d='M12 4a8 8 0 0 0-8 8c0 2.21.9 4.21 2.34 5.66L8.5 15.5A5.98 5.98 0 0 1 6 12a6 6 0 1 1 12 0c0 1.3-.41 2.5-1.12 3.5l2.16 2.16A7.96 7.96 0 0 0 20 12a8 8 0 0 0-8-8zm0 4a4 4 0 0 0-4 4c0 1.1.45 2.1 1.17 2.83l2.12-2.12a1 1 0 1 1 1.42 0l2.12 2.12A3.99 3.99 0 0 0 16 12a4 4 0 0 0-4-4z' fill='%2300E5FF'/></svg>">
+<!-- Favicon -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z' fill='%234C6FFF'/><path d='M8.5 12.2l2.4 2.4 4.8-5' stroke='%230A0D12' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-
-  <!-- Structured Data -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "iTantra",
-    "applicationCategory": "CommunicationApplication",
-    "operatingSystem": "Android 8.0+",
-    "description": "Indian Multilingual TTS & STT Aided Neural Transceiver Radio Access for low bitrate disaster response and tactical communication.",
-    "author": {
-      "@type": "Person",
-      "name": "Naman Tiwari"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "INR"
-    }
+<!-- Structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "iTantra",
+  "applicationCategory": "CommunicationApplication",
+  "operatingSystem": "Android 8.0+",
+  "description": "Indian Multilingual TTS & STT Aided Neural Transceiver Radio Access for low bitrate disaster response and tactical communication.",
+  "author": {
+    "@type": "Person",
+    "name": "Naman Tiwari"
   }
-  </script>
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- Top Announcement Bar -->
-  <div class="announce">
-    <span class="badge-sih">SIH 2026</span>
-    <span>ISRO PROBLEM STATEMENT 26104</span>
-    <span>&nbsp;·&nbsp;</span>
-    <strong>100% Offline Tactical Transceiver</strong>
-    <span>&nbsp;·&nbsp;</span>
-    <span>10 Indian Regional Languages</span>
-    <span>&nbsp;·&nbsp;</span>
-    <span>99.9% Bandwidth Reduction</span>
+<nav>
+  <div class="wrap row">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" fill="none">
+        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#4C6FFF"/>
+        <path d="M8.5 12.2l2.4 2.4 4.8-5" stroke="#0A0D12" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      iTantra
+    </div>
+    <div class="navlinks">
+      <a href="#problem">Problem</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#protocol">Protocol</a>
+      <a href="#model">Benchmarks</a>
+      <a href="#stack">Tech Stack</a>
+      <a href="#download">Download</a>
+    </div>
+    <a class="navcta" href="https://github.com/Naman225/iTantra/releases/download/v1.0.0/iTantra-v1.0-release.apk" target="_blank" rel="noopener">Download APK v1.0 ↗</a>
   </div>
+</nav>
 
-  <!-- Navigation -->
-  <nav>
-    <div class="wrap row">
-      <a href="#" class="brand">
-        <div class="brand-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/>
-            <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
-            <circle cx="12" cy="12" r="2"/>
-            <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
-            <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>
-          </svg>
-        </div>
-        <span>iTantra</span>
-        <span class="sub">ISRO PS 26104</span>
-      </a>
-
-      <div class="navlinks">
-        <a href="#problem">Problem</a>
-        <a href="#demo">Live Calculator</a>
-        <a href="#architecture">Architecture</a>
-        <a href="#protocol">TantraPacket</a>
-        <a href="#languages">10 Languages</a>
-        <a href="#benchmarks">Benchmarks</a>
-        <a href="#download">Download APK</a>
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="tagrow">
+        <span class="tag">ISRO Problem Statement 26104</span>
+        <span class="tag">100% Offline Neural Voice</span>
+        <span class="tag">~50-Byte Micro-Frames</span>
       </div>
-
-      <div class="nav-actions">
-        <a class="navcta-ghost" href="https://github.com/Naman225/iTantra" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-          </svg>
-          GitHub ↗
-        </a>
-        <a class="navcta-primary" href="https://github.com/Naman225/iTantra/releases/download/v1.0.0/iTantra-v1.0-release.apk" target="_blank" rel="noopener">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          APK v1.0.0
-        </a>
+      <h1>Human voice takes 64 kbps.<br><em>iTantra transmits it in 50 bytes<br>across 10 Indian languages.</em></h1>
+      <p class="lede">iTantra is an ultra-low-bitrate tactical neural voice transceiver engineered for disaster rescue, remote defense detachments, and off-grid radio links. It converts speech to tiny semantic frames on-device, transmits across noisy LoRa or VHF channels, and synthesizes natural Indic voice on the receiver.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/Naman225/iTantra/releases/download/v1.0.0/iTantra-v1.0-release.apk">Download APK v1.0.0 ↗</a>
+        <a class="btn btn-ghost" href="#architecture">View Architecture Diagram</a>
+        <a class="btn btn-ghost" href="https://github.com/Naman225/iTantra" target="_blank" rel="noopener">GitHub Repository ↗</a>
       </div>
     </div>
-  </nav>
 
-  <!-- Hero Section -->
-  <header class="hero">
-    <div class="wrap hero-grid">
-      <div>
-        <div class="tagrow">
-          <span class="tag accent">ISRO Problem Statement 26104</span>
-          <span class="tag">100% Offline (No Cloud)</span>
-          <span class="tag">~50-Byte Micro-Packets</span>
-          <span class="tag">LoRa + UDP + BLE Mesh</span>
-        </div>
-        <h1>Human voice takes 64,000 bps.<br>iTantra transmits it in <em>just 50 bytes across 10 Indian languages.</em></h1>
-        <p class="lede">An ultra-low-bitrate smart neural voice transceiver engineered for disaster rescue, remote defense posts, and tactical operations. Converts speech to compressed semantic packets offline, transmits across noisy HF/VHF/LoRa radio links, and synthesizes natural Indic voice on the receiver.</p>
-        <div class="cta-row">
-          <a class="btn btn-primary" href="https://github.com/Naman225/iTantra/releases/download/v1.0.0/iTantra-v1.0-release.apk">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Download APK v1.0.0 (28 MB)
-          </a>
-          <a class="btn btn-qr" href="#download">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7"/>
-              <rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/>
-              <rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            Scan QR Code
-          </a>
-          <a class="btn btn-ghost" href="https://github.com/Naman225/iTantra" target="_blank" rel="noopener">
-            View Repository ↗
-          </a>
-        </div>
-      </div>
-
-      <!-- Hero Visual: Tactical HUD -->
-      <div class="hero-visual">
-        <div class="transceiver-hud">
-          <div class="hud-header">
-            <div class="hud-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2">
-                <circle cx="12" cy="12" r="2"/>
-                <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
-                <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
-              </svg>
-              <span>TACTICAL RADIO BUS · NODE #1001</span>
-            </div>
-            <div class="hud-live-pill" id="hudLivePill">
-              <span class="dot" id="hudDot"></span>
-              GREEN · COMM ACTIVE
-            </div>
-          </div>
-
-          <div class="hud-screen">
-            <div class="packet-flow">
-              <div class="packet-line">
-                <span>FRAME SEQ:</span>
-                <span class="val mono" id="hudSeq">0482</span>
-              </div>
-              <div class="packet-line">
-                <span>INDIC LANGUAGE:</span>
-                <span class="val mono" id="hudLang">Hindi (हिन्दी)</span>
-              </div>
-              <div class="packet-line">
-                <span>FLAGS / ROUTING:</span>
-                <span class="val mono" id="hudFlags">0x00 (Routine PTT)</span>
-              </div>
-              <div class="packet-line">
-                <span>CRC16-CCITT:</span>
-                <span class="val mono" id="hudCrc">0x7A1F</span>
-              </div>
-              <div style="border-top:1px dashed var(--line); margin-top:8px; padding-top:8px;">
-                <span style="color:var(--ink-faint); display:block; margin-bottom:4px;">DECODED TRANSCRIPT:</span>
-                <div class="val" id="hudText" style="color:#fff; font-size:13px; line-height:1.4;">
-                  "राहत दल सेक्टर 4 ग्रिड की ओर रवाना हो चुका है।"
-                </div>
-              </div>
-            </div>
-
-            <!-- Animated audio spectrum -->
-            <div class="hud-spectrum" id="hudSpectrum"></div>
-          </div>
-
-          <!-- Quick Stats Row -->
-          <div class="hud-stats-row">
-            <div class="hud-stat">
-              <div class="n" id="hudStatBytes">48 Bytes</div>
-              <div class="l">PACKET SIZE</div>
-            </div>
-            <div class="hud-stat">
-              <div class="n" id="hudStatBitrate">132 bps</div>
-              <div class="l">BITRATE</div>
-            </div>
-            <div class="hud-stat">
-              <div class="n" id="hudStatSaving">99.92%</div>
-              <div class="l">BW SAVED</div>
-            </div>
-          </div>
-
-          <!-- Interactive Mode Switchers -->
-          <div class="hud-controls">
-            <button class="hud-btn active" type="button">1. Routine Voice</button>
-            <button class="hud-btn" type="button">2. Tactical Alert</button>
-            <button class="hud-btn" type="button">3. SOS Distress</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Problem Section -->
-  <section id="problem">
-    <div class="wrap problem-grid">
-      <div>
-        <div class="bignum">
-          99.9%
-          <small>Bandwidth reduction over standard 64 kbps voice radio</small>
+    <div class="hero-visual">
+      <div class="illustration">
+        <svg viewBox="0 0 480 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Radial telemetry dial showing effective bitrate and bandwidth savings">
+          <circle cx="240.0" cy="240.0" r="104" fill="none" stroke="#1B222C" stroke-width="1"/>
+          <circle cx="240.0" cy="240.0" r="116" fill="#0D1119" stroke="#232A34" stroke-width="1"/>
+          <line x1="240.0" y1="122.0" x2="240.0" y2="48.3" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="247.7" y1="122.3" x2="251.4" y2="66.2" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="255.4" y1="123.0" x2="263.5" y2="61.3" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.98"/>
+          <line x1="263.0" y1="124.3" x2="274.2" y2="67.8" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.95"/>
+          <line x1="270.5" y1="126.0" x2="287.6" y2="62.4" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.89"/>
+          <line x1="277.9" y1="128.3" x2="296.5" y2="73.7" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.83"/>
+          <line x1="285.2" y1="131.0" x2="309.3" y2="72.6" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.83"/>
+          <line x1="292.2" y1="134.2" x2="314.3" y2="89.4" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.90"/>
+          <line x1="299.0" y1="137.8" x2="330.7" y2="82.9" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.95"/>
+          <line x1="305.6" y1="141.9" x2="336.3" y2="95.9" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="311.8" y1="146.4" x2="349.6" y2="97.2" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="317.8" y1="151.3" x2="363.7" y2="99.0" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="323.4" y1="156.6" x2="361.1" y2="118.9" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.96"/>
+          <line x1="328.7" y1="162.2" x2="369.2" y2="126.7" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.91"/>
+          <line x1="333.6" y1="168.2" x2="380.6" y2="132.1" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.85"/>
+          <line x1="338.1" y1="174.4" x2="382.3" y2="144.9" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.81"/>
+          <line x1="342.2" y1="181.0" x2="387.0" y2="155.2" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.88"/>
+          <line x1="345.8" y1="187.8" x2="405.5" y2="158.4" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.94"/>
+          <line x1="349.0" y1="194.8" x2="420.1" y2="165.4" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.98"/>
+          <line x1="351.7" y1="202.1" x2="404.3" y2="184.2" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="354.0" y1="209.5" x2="430.2" y2="189.0" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="355.7" y1="217.0" x2="427.5" y2="202.7" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.97"/>
+          <line x1="357.0" y1="224.6" x2="415.5" y2="216.9" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.93"/>
+          <line x1="357.7" y1="232.3" x2="406.9" y2="229.1" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.87"/>
+          <line x1="358.0" y1="240.0" x2="419.0" y2="240.0" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.80"/>
+          <line x1="357.7" y1="247.7" x2="410.4" y2="251.2" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.86"/>
+          <line x1="357.0" y1="255.4" x2="408.4" y2="262.2" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.92"/>
+          <line x1="355.7" y1="263.0" x2="410.3" y2="273.9" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.97"/>
+          <line x1="354.0" y1="270.5" x2="431.2" y2="291.2" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="351.7" y1="277.9" x2="421.1" y2="301.5" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="349.0" y1="285.2" x2="420.5" y2="314.8" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.98"/>
+          <line x1="345.8" y1="292.2" x2="409.6" y2="323.6" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.94"/>
+          <line x1="342.2" y1="299.0" x2="394.5" y2="329.2" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.89"/>
+          <line x1="338.1" y1="305.6" x2="391.1" y2="341.0" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.82"/>
+          <line x1="333.6" y1="311.8" x2="374.8" y2="343.4" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.84"/>
+          <line x1="328.7" y1="317.8" x2="375.5" y2="358.8" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.90"/>
+          <line x1="323.4" y1="323.4" x2="376.4" y2="376.4" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.95"/>
+          <line x1="317.8" y1="328.7" x2="365.6" y2="383.3" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="311.8" y1="333.6" x2="361.1" y2="397.9" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="305.6" y1="338.1" x2="345.3" y2="397.6" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="299.0" y1="342.2" x2="334.9" y2="404.4" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.96"/>
+          <line x1="292.2" y1="345.8" x2="314.1" y2="390.3" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.91"/>
+          <line x1="285.2" y1="349.0" x2="303.9" y2="394.2" stroke="#E5484D" stroke-width="3.4" stroke-linecap="round" opacity="0.84"/>
+          <line x1="277.9" y1="351.7" x2="293.4" y2="397.2" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.82"/>
+          <line x1="270.5" y1="354.0" x2="283.1" y2="400.9" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.88"/>
+          <line x1="263.0" y1="355.7" x2="274.2" y2="411.8" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.94"/>
+          <line x1="255.4" y1="357.0" x2="262.8" y2="413.3" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.98"/>
+          <line x1="247.7" y1="357.7" x2="251.9" y2="421.2" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="240.0" y1="358.0" x2="240.0" y2="431.8" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="232.3" y1="357.7" x2="228.1" y2="421.1" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.97"/>
+          <line x1="224.6" y1="357.0" x2="216.8" y2="416.0" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.92"/>
+          <line x1="217.0" y1="355.7" x2="207.2" y2="404.9" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.86"/>
+          <line x1="209.5" y1="354.0" x2="197.6" y2="398.1" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.80"/>
+          <line x1="202.1" y1="351.7" x2="180.3" y2="415.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.86"/>
+          <line x1="194.8" y1="349.0" x2="169.3" y2="410.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.92"/>
+          <line x1="187.8" y1="345.8" x2="156.7" y2="409.0" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.97"/>
+          <line x1="181.0" y1="342.2" x2="150.9" y2="394.3" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="174.4" y1="338.1" x2="131.7" y2="402.1" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="168.2" y1="333.6" x2="132.5" y2="380.1" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.98"/>
+          <line x1="162.2" y1="328.7" x2="121.9" y2="374.7" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.94"/>
+          <line x1="156.6" y1="323.4" x2="106.2" y2="373.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.88"/>
+          <line x1="151.3" y1="317.8" x2="109.3" y2="354.6" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.82"/>
+          <line x1="146.4" y1="311.8" x2="101.5" y2="346.2" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.84"/>
+          <line x1="141.9" y1="305.6" x2="87.0" y2="342.2" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.91"/>
+          <line x1="137.8" y1="299.0" x2="72.3" y2="336.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.96"/>
+          <line x1="134.2" y1="292.2" x2="64.8" y2="326.4" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="131.0" y1="285.2" x2="73.4" y2="309.0" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="128.3" y1="277.9" x2="75.7" y2="295.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="126.0" y1="270.5" x2="67.4" y2="286.3" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.95"/>
+          <line x1="124.3" y1="263.0" x2="70.4" y2="273.7" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.90"/>
+          <line x1="123.0" y1="255.4" x2="75.4" y2="261.7" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.84"/>
+          <line x1="122.3" y1="247.7" x2="59.3" y2="251.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.82"/>
+          <line x1="122.0" y1="240.0" x2="53.1" y2="240.0" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.89"/>
+          <line x1="122.3" y1="232.3" x2="62.6" y2="228.4" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.94"/>
+          <line x1="123.0" y1="224.6" x2="50.6" y2="215.1" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.98"/>
+          <line x1="124.3" y1="217.0" x2="58.4" y2="203.9" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="126.0" y1="209.5" x2="46.9" y2="188.3" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="128.3" y1="202.1" x2="65.9" y2="180.9" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.97"/>
+          <line x1="131.0" y1="194.8" x2="78.9" y2="173.3" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.92"/>
+          <line x1="134.2" y1="187.8" x2="88.8" y2="165.4" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.86"/>
+          <line x1="137.8" y1="181.0" x2="92.4" y2="154.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.80"/>
+          <line x1="141.9" y1="174.4" x2="98.8" y2="145.6" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.87"/>
+          <line x1="146.4" y1="168.2" x2="94.4" y2="128.3" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.93"/>
+          <line x1="151.3" y1="162.2" x2="92.0" y2="110.2" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.97"/>
+          <line x1="156.6" y1="156.6" x2="109.2" y2="109.2" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="162.2" y1="151.3" x2="121.4" y2="104.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="168.2" y1="146.4" x2="118.0" y2="81.1" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.98"/>
+          <line x1="174.4" y1="141.9" x2="138.7" y2="88.4" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.94"/>
+          <line x1="181.0" y1="137.8" x2="156.8" y2="95.8" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.88"/>
+          <line x1="187.8" y1="134.2" x2="169.1" y2="96.3" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.81"/>
+          <line x1="194.8" y1="131.0" x2="177.0" y2="88.0" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.85"/>
+          <line x1="202.1" y1="128.3" x2="181.2" y2="66.7" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.91"/>
+          <line x1="209.5" y1="126.0" x2="190.1" y2="53.9" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.96"/>
+          <line x1="217.0" y1="124.3" x2="203.9" y2="58.4" stroke="#33C481" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <line x1="224.6" y1="123.0" x2="217.1" y2="66.1" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="1.00"/>
+          <line x1="232.3" y1="122.3" x2="228.0" y2="56.9" stroke="#E3A008" stroke-width="3.4" stroke-linecap="round" opacity="0.99"/>
+          <circle cx="240.0" cy="240.0" r="3" fill="#4C6FFF"/>
+          <g id="needle">
+            <line x1="240" y1="240" x2="335" y2="240" stroke="#33C481" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="335" cy="240" r="4.5" fill="#33C481"/>
+          </g>
+        </svg>
+        <div class="illustration-caption">
+          <div class="val mono" id="riskVal">48 B</div>
+          <div class="lab" id="riskLab">FRAME PAYLOAD</div>
         </div>
       </div>
-      <div class="problem-copy">
-        <div class="section-head" style="margin-bottom:24px;">
-          <span class="eyebrow">THE OPERATIONAL CHALLENGE</span>
-          <h2>Voice communications collapse when disaster strikes or spectrum is jammed.</h2>
-        </div>
-        <p>During extreme floods, earthquakes, cyclones, or in isolated Himalayan border passes, <strong>cellular networks and internet infrastructure fail completely</strong>. Emergency responders, defense detachments, and stranded civilians are forced to fall back on low-bitrate radio links such as LoRa, HF, or tactical VHF.</p>
-        <p>Traditional digital voice requires at least <strong>16,000 to 64,000 bits per second</strong>. Over low-power radio channels with throughput capped at 0.3 to 5.4 kbps, streaming raw audio is physically impossible, resulting in 100% packet loss and complete silence.</p>
-
-        <div class="factline">
-          <div class="num">01</div>
-          <p><strong>Cellular &amp; Cloud Dependency Fails:</strong> Cloud APIs like Whisper or Google Speech cannot operate with zero internet. Everything must execute locally on the phone's CPU.</p>
-        </div>
-        <div class="factline">
-          <div class="num">02</div>
-          <p><strong>Extreme LoRa Range Barrier:</strong> LoRa radios can transmit 10–15 km with milliwatt power, but only at ~1 kbps. Traditional voice codecs (Opus, AMR) cannot fit into this envelope.</p>
-        </div>
-        <div class="factline">
-          <div class="num">03</div>
-          <p><strong>Multilingual Barrier in Rescue:</strong> Rescue teams speaking Hindi, Tamil, Bengali, or Marathi need instant translation without manual radio operators relaying messages.</p>
-        </div>
+      <div class="scope">
+        <span class="scope-title mono">TACTICAL_RADIO_BUS</span>
+        <span class="live-dot"><span></span> live mesh</span>
+        <span class="tier-pill" id="tierPill">GREEN · 99.9% SAVED</span>
       </div>
     </div>
-  </section>
+  </div>
+</header>
 
-  <!-- Interactive Live Calculator -->
-  <section id="demo" style="background:var(--bg-deep);">
-    <div class="wrap">
-      <div class="section-head">
-        <span class="eyebrow">LIVE BANDWIDTH BENCHMARK</span>
-        <h2>Compare Voice Codecs vs. iTantra Micro-Frames</h2>
-        <p>Type any sentence or pick an operational tactical phrase below to see the mathematical bandwidth savings in real time.</p>
+<section id="problem">
+  <div class="wrap problem-grid">
+    <div>
+      <div class="bignum">99.9%<small>bandwidth reduction over<br>standard 64 kbps voice radio</small></div>
+    </div>
+    <div class="problem-copy">
+      <div class="section-head" style="margin-bottom:24px;">
+        <span class="eyebrow">THE PROBLEM</span>
+        <h2>Voice communications collapse when disaster strikes or spectrum is congested.</h2>
       </div>
+      <p>During extreme floods, earthquakes, cyclones, or in remote Himalayan border passes, <strong>cellular networks and internet infrastructure fail completely</strong>. Emergency responders, defense detachments, and stranded civilians are forced to fall back on low-bitrate radio links such as LoRa, HF, or tactical VHF.</p>
+      <p>Traditional digital voice requires at least <strong>16,000 to 64,000 bits per second</strong>. Over low-power radio channels with throughput capped at 0.3 to 5.4 kbps, streaming raw audio is physically impossible, resulting in severe packet loss, distorted stutter, and complete radio silence.</p>
 
-      <div class="calc-card">
-        <div class="calc-grid">
-          <div class="calc-input-group">
-            <label for="calcInput">TACTICAL TRANSMISSION PHRASE:</label>
-            <div class="preset-pills">
-              <span class="preset-pill active" data-phrase="राहत दल सेक्टर 4 ग्रिड की ओर रवाना हो चुका है।">Hindi Rescue</span>
-              <span class="preset-pill" data-phrase="Air support required at coordinates grid 48.">Air Support</span>
-              <span class="preset-pill" data-phrase="அவசர மருத்துவ உதவி தேவை, மூன்று பேர் சிக்கியுள்ளனர்.">Tamil Medical</span>
-              <span class="preset-pill" data-phrase="Flash flood warning issued for coastal sectors.">Flood Warning</span>
-            </div>
-            <textarea class="calc-textarea" id="calcInput" rows="3">राहत दल सेक्टर 4 ग्रिड की ओर रवाना हो चुका है।</textarea>
-            <p style="font-size:12px; color:var(--ink-faint); margin-top:8px;">
-              Sentence is processed 100% offline via local on-device neural acoustic models.
-            </p>
-          </div>
+      <div class="factline">
+        <div class="num">01</div>
+        <p><strong>Cellular &amp; Cloud Dependency Fails:</strong> Cloud APIs like Whisper or Google Speech cannot operate with zero internet. Everything must execute locally on the phone's CPU.</p>
+      </div>
+      <div class="factline">
+        <div class="num">02</div>
+        <p><strong>Extreme LoRa Range Barrier:</strong> LoRa radios can transmit 10–15 km with milliwatt power, but only at ~1 kbps. Traditional voice codecs (Opus, AMR) cannot fit into this envelope.</p>
+      </div>
+      <div class="factline">
+        <div class="num">03</div>
+        <p><strong>Multilingual Barrier in Rescue:</strong> Rescue teams speaking Hindi, Tamil, Bengali, or Marathi need instant translation without manual radio operators relaying messages.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-          <div class="calc-results">
-            <!-- PCM Comparison -->
-            <div class="comp-bar-container">
-              <div class="comp-label">
-                <span style="color:#EF4444; font-weight:600;">Standard Uncompressed PCM (16 kHz 16-bit):</span>
-                <span class="mono" id="calcPcmVal">112,000 B (109.4 KB)</span>
-              </div>
-              <div class="comp-bar-bg">
-                <div class="comp-bar-fill comp-bar-pcm" id="calcPcmBar">Fails on LoRa (Exceeds Limit)</div>
-              </div>
-            </div>
+<section id="architecture">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">SYSTEM ARCHITECTURE</span>
+      <h2>End-to-End Neural Radio Access Pipeline</h2>
+      <p>From microphone acoustic capture to long-range RF broadcast and localized loudspeaker voice reconstruction.</p>
+    </div>
 
-            <!-- Opus VoIP Comparison -->
-            <div class="comp-bar-container">
-              <div class="comp-label">
-                <span style="color:#F59E0B; font-weight:600;">Compressed Opus VoIP (24 kbps):</span>
-                <span class="mono" id="calcOpusVal">10,500 B (10.3 KB)</span>
-              </div>
-              <div class="comp-bar-bg">
-                <div class="comp-bar-fill comp-bar-opus" id="calcOpusBar">Severe Packet Drop</div>
-              </div>
-            </div>
+    <div class="cards-3">
+      <div class="card">
+        <div class="pill pill-green">STEP 1 &amp; 2</div>
+        <h3>On-Device Acoustic STT</h3>
+        <p>Microphone audio (16 kHz 16-bit PCM) is analyzed directly by quantized on-device neural acoustic models (Vosk &amp; Sherpa-ONNX). Runs 100% offline in under 120ms with 0.163 RTF (6.1× faster than real-time).</p>
+      </div>
+      <div class="card">
+        <div class="pill pill-amber">STEP 3 &amp; 4</div>
+        <h3>TantraPacket Framing &amp; RadioBus</h3>
+        <p>Recognized speech is packed into an 8-byte fixed binary envelope with 3-tier priority flags (Red SOS &gt; Yellow Alert &gt; Green Routine) and CRC-16 CCITT polynomial <code>0x1021</code>, dispatched across LoRa, UDP, and Bluetooth.</p>
+      </div>
+      <div class="card">
+        <div class="pill pill-accent">STEP 5</div>
+        <h3>On-Device Indic Voice Synthesis</h3>
+        <p>The receiving radio node reconstructs natural spoken voice in the operator's chosen Indian regional language at 0.049 RTF (20.2× faster than real-time), with tactical continuous vibration for SOS alerts.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-            <!-- iTantra Comparison -->
-            <div class="comp-bar-container">
-              <div class="comp-label">
-                <span style="color:#10B981; font-weight:700;">iTantra TantraPacket Frame:</span>
-                <span class="mono" style="color:#10B981; font-weight:700;" id="calcItantraVal">48 Bytes (8B Header + 40B Text)</span>
-              </div>
-              <div class="comp-bar-bg">
-                <div class="comp-bar-fill comp-bar-itantra" id="calcItantraBar">48 B</div>
-              </div>
-            </div>
+<section id="pipeline">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">HOW IT WORKS</span>
+      <h2>Seven tactical stages, from voice input to spoken voice output.</h2>
+      <p>Audio is never streamed as raw waveform across the airwaves — each stage processes speech semantically in sub-second turnaround.</p>
+    </div>
 
-            <!-- Savings Banner -->
-            <div style="background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-              <div>
-                <span style="font-family:var(--mono); font-size:15px; font-weight:700; color:var(--green);" id="calcSavingVal">99.92% Bandwidth Saved</span>
-                <span style="display:block; font-size:12px; color:var(--ink-dim);" id="calcLoraTime">~0.18s transmission over LoRa radio</span>
-              </div>
-              <span style="font-family:var(--mono); font-size:11px; padding:4px 8px; border-radius:4px; background:rgba(6,182,212,0.1); color:var(--cyan); border:1px solid rgba(6,182,212,0.3);">
-                ~132 bps Bitrate
-              </span>
-            </div>
-          </div>
+    <div class="pipeline">
+      <div class="stage">
+        <div class="stage-num">01</div>
+        <div class="stage-body">
+          <div><div class="stage-title">Microphone capture &amp; VAD gate</div><div class="stage-file">audio/AudioRecordManager.kt</div></div>
+          <div class="stage-desc">Microphone stream is ingested at 16 kHz 16-bit mono PCM. Energy VAD and Silero neural voice activity filters ambient background wind and engine noise.</div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="stage-num">02</div>
+        <div class="stage-body">
+          <div><div class="stage-title">Offline Acoustic STT Engine</div><div class="stage-file">engine/SpeechToTextManager.kt</div></div>
+          <div class="stage-desc">Quantized on-device acoustic models transcribe spoken sentences locally in ~120 ms. Zero cloud API calls; zero network latency.</div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="stage-num">03</div>
+        <div class="stage-body">
+          <div><div class="stage-title">3-Tier Intelligent Priority Triage</div><div class="stage-file">emergency/KeywordClassifier.kt</div></div>
+          <div class="stage-desc">Scans transcript for critical keywords (<em>"khatra"</em>, <em>"sos"</em>, <em>"danger"</em>, <em>"madad"</em>). Automatically routes as Priority 1 Red SOS, Priority 2 Yellow Alert, or Routine Comms.</div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="stage-num">04</div>
+        <div class="stage-body">
+          <div><div class="stage-title">Binary Protocol Framing (TantraPacket)</div><div class="stage-file">protocol/TantraPacket.kt</div></div>
+          <div class="stage-desc">Encapsulates text into a compact frame: Magic (0x54) + Flags + 16-bit Sequence Number + Payload Length + Payload + CRC-16 CCITT polynomial 0x1021.</div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="stage-num">05</div>
+        <div class="stage-body">
+          <div><div class="stage-title">Multi-Bearer Radio Mesh Dispatch</div><div class="stage-file">radio/RadioBus.kt · UdpRadioTransceiver.kt</div></div>
+          <div class="stage-desc">Simultaneously transmits across Sub-GHz LoRa (10–15 km), Wi-Fi Hotspot UDP Broadcast (port 8888), and Bluetooth RFCOMM Serial SPP with 60-second duplicate suppression.</div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="stage-num">06</div>
+        <div class="stage-body">
+          <div><div class="stage-title">Cross-Language Semantic Translation</div><div class="stage-file">protocol/PhraseCodebook.kt</div></div>
+          <div class="stage-desc">Maps operational disaster response phrases across 10 Indian regional languages, allowing a Hindi field operator to talk directly with a Tamil or Bengali team.</div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="stage-num">07</div>
+        <div class="stage-body">
+          <div><div class="stage-title">On-Device Indic Neural Voice Synthesis</div><div class="stage-file">engine/TextToSpeechManager.kt</div></div>
+          <div class="stage-desc">High-fidelity offline neural voice engine reconstructs natural voice output at 0.049 RTF (20.2× faster than real-time) through the receiver phone's loudspeaker.</div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- System Architecture & 5-Stage Pipeline -->
-  <section id="architecture">
-    <div class="wrap">
-      <div class="section-head">
-        <span class="eyebrow">SYSTEM ARCHITECTURE</span>
-        <h2>End-to-End Neural Radio Access Pipeline</h2>
-        <p>From microphone acoustic capture to long-range RF broadcast and localized loudspeaker voice reconstruction.</p>
-      </div>
-
-      <div class="pipeline">
-        <!-- Stage 01 -->
-        <div class="stage">
-          <div class="stage-num">STAGE 01</div>
-          <div class="stage-body">
-            <div>
-              <div class="stage-title">Offline Acoustic STT Engine</div>
-              <div class="stage-file">engine/SpeechToTextManager.kt</div>
-            </div>
-            <div class="stage-desc">
-              Captures 16 kHz 16-bit PCM audio directly from hardware microphone. Feeds audio to quantized on-device neural acoustic models (Vosk/Kaldi &amp; Sherpa-ONNX). Runs <strong>100% offline in under 120ms with 0.163 RTF</strong> (6.1× faster than real-time) without cloud network calls.
-            </div>
-          </div>
-        </div>
-
-        <!-- Stage 02 -->
-        <div class="stage">
-          <div class="stage-num">STAGE 02</div>
-          <div class="stage-body">
-            <div>
-              <div class="stage-title">3-Tier Intelligent Triage &amp; LID</div>
-              <div class="stage-file">emergency/KeywordClassifier.kt</div>
-            </div>
-            <div class="stage-desc">
-              Classifies spoken text against localized danger codebooks (e.g. <em>"khatra"</em>, <em>"danger"</em>, <em>"madad"</em>, <em>"sos"</em>). Automatically assigns message tier: <strong>Red SOS Distress</strong> (Priority 1) &gt; <strong>Yellow Tactical Alert</strong> (Priority 2) &gt; <strong>Green Routine Communication</strong> (Priority 3).
-            </div>
-          </div>
-        </div>
-
-        <!-- Stage 03 -->
-        <div class="stage">
-          <div class="stage-num">STAGE 03</div>
-          <div class="stage-body">
-            <div>
-              <div class="stage-title">Binary Protocol Framer (TantraPacket)</div>
-              <div class="stage-file">protocol/TantraPacket.kt</div>
-            </div>
-            <div class="stage-desc">
-              Packs text into a fixed 8-byte binary envelope containing Magic Byte (`0x54`), Priority &amp; Language Flags, 16-bit Monotonic Sequence Number, Payload Length, UTF-8 text tokens, and a 16-bit CRC-CCITT mathematical error check polynomial (`0x1021`).
-            </div>
-          </div>
-        </div>
-
-        <!-- Stage 04 -->
-        <div class="stage">
-          <div class="stage-num">STAGE 04</div>
-          <div class="stage-body">
-            <div>
-              <div class="stage-title">Unified Multi-Bearer Radio Transport</div>
-              <div class="stage-file">radio/RadioBus.kt &amp; UdpRadioTransceiver.kt</div>
-            </div>
-            <div class="stage-desc">
-              Broadcasts binary packets simultaneously across available physical wireless bearers: <strong>Sub-GHz LoRa (10–15 km range)</strong>, direct <strong>Wi-Fi Hotspot UDP Broadcast (Port 8888)</strong>, and <strong>Bluetooth RFCOMM Serial SPP P2P sockets</strong>. Implements 60-second sliding-window duplicate suppression.
-            </div>
-          </div>
-        </div>
-
-        <!-- Stage 05 -->
-        <div class="stage">
-          <div class="stage-num">STAGE 05</div>
-          <div class="stage-body">
-            <div>
-              <div class="stage-title">Offline Indic Neural Voice Synthesizer</div>
-              <div class="stage-file">engine/TextToSpeechManager.kt</div>
-            </div>
-            <div class="stage-desc">
-              Receiver node parses the CRC-verified frame and maps operational phrases across target languages (I-14 Cross-Language Translation). The on-device neural TTS engine synthesizes natural spoken audio at <strong>0.049 RTF (20.2× faster than real-time)</strong> directly through the loudspeaker.
-            </div>
-          </div>
-        </div>
-      </div>
+<section id="protocol">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">BINARY SPECIFICATION</span>
+      <h2>The TantraPacket Protocol (8-Byte Envelope)</h2>
+      <p>Engineered for guaranteed packet delivery and 100% corruption rejection over low-power tactical RF links.</p>
     </div>
-  </section>
 
-  <!-- Protocol Specification Section -->
-  <section id="protocol" style="background:var(--bg-deep);">
-    <div class="wrap">
-      <div class="section-head">
-        <span class="eyebrow">BINARY SPECIFICATION</span>
-        <h2>The TantraPacket Protocol (8-Byte Envelope)</h2>
-        <p>Designed from the ground up for extreme noise immunity over low-bitrate tactical RF links.</p>
-      </div>
-
-      <div class="protocol-card">
-        <pre class="protocol-frame-art">
+    <div class="protocol-card">
+      <pre class="protocol-frame-art">
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -439,381 +351,300 @@
 |            CRC-16 CCITT Checksum (Polynomial 0x1021)          |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</pre>
 
-        <table class="protocol-table">
-          <thead>
-            <tr>
-              <th>FIELD NAME</th>
-              <th>OCTETS</th>
-              <th>DATA TYPE</th>
-              <th>DESCRIPTION &amp; TACTICAL FUNCTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><strong>Magic Byte</strong></td>
-              <td class="mono">1 Byte</td>
-              <td class="mono">uint8</td>
-              <td>Fixed identifier <code style="color:var(--cyan);">0x54</code> ('T' for Tantra) to reject RF background noise &amp; invalid transmissions.</td>
-            </tr>
-            <tr>
-              <td><strong>Flags</strong></td>
-              <td class="mono">1 Byte</td>
-              <td class="mono">bitfield</td>
-              <td>Bit 7: Red SOS Distress | Bit 6: Yellow Tactical Alert | Bits 0–3: Indic Language Identifier (0–9).</td>
-            </tr>
-            <tr>
-              <td><strong>Sequence Number</strong></td>
-              <td class="mono">2 Bytes</td>
-              <td class="mono">uint16</td>
-              <td>Monotonic counter for deduplication across multi-path radio echoes and packet re-ordering.</td>
-            </tr>
-            <tr>
-              <td><strong>Payload Length</strong></td>
-              <td class="mono">2 Bytes</td>
-              <td class="mono">uint16</td>
-              <td>Byte count of the compressed UTF-8 text payload (<code style="color:var(--cyan);">0 &lt; N &le; 512</code>).</td>
-            </tr>
-            <tr>
-              <td><strong>Payload Tokens</strong></td>
-              <td class="mono">N Bytes</td>
-              <td class="mono">bytes</td>
-              <td>UTF-8 text token stream representing the recognized spoken speech sentence (~30 to 80 bytes).</td>
-            </tr>
-            <tr>
-              <td><strong>CRC-16 CCITT</strong></td>
-              <td class="mono">2 Bytes</td>
-              <td class="mono">uint16</td>
-              <td>Polynomial <code style="color:var(--cyan);">0x1021</code> checksum. Guarantees 100% corruption rejection on noisy radio links.</td>
-            </tr>
-            <tr style="background:rgba(6,182,212,0.06);">
-              <td><strong>TOTAL OVERHEAD</strong></td>
-              <td class="mono"><strong>8 Bytes</strong></td>
-              <td class="mono"><strong>Header + CRC</strong></td>
-              <td><strong>99.92% Bandwidth reduction over analog/PCM voice streams.</strong></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- 10 Indian Languages Grid -->
-  <section id="languages">
-    <div class="wrap">
-      <div class="section-head">
-        <span class="eyebrow">MULTILINGUAL CAPABILITIES</span>
-        <h2>10 Indian Regional Languages Supported</h2>
-        <p>Field-tested phonetic tokenization, phrase codebooks, and localized offline neural voice synthesis.</p>
-      </div>
-
-      <div class="lang-grid">
-        <div class="lang-card">
-          <div class="native">हिन्दी</div>
-          <div class="english">Hindi · hi-IN</div>
-          <span class="tag-offline">100% Offline Model</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">English</div>
-          <div class="english">English (India) · en-IN</div>
-          <span class="tag-offline">100% Offline Model</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">தமிழ்</div>
-          <div class="english">Tamil · ta-IN</div>
-          <span class="tag-offline">100% Offline Model</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">తెలుగు</div>
-          <div class="english">Telugu · te-IN</div>
-          <span class="tag-offline">Phonetic Codebook</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">বাংলা</div>
-          <div class="english">Bengali · bn-IN</div>
-          <span class="tag-offline">Phonetic Codebook</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">मराठी</div>
-          <div class="english">Marathi · mr-IN</div>
-          <span class="tag-offline">Phonetic Codebook</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">ગુજરાતી</div>
-          <div class="english">Gujarati · gu-IN</div>
-          <span class="tag-offline">Phonetic Codebook</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">ಕನ್ನಡ</div>
-          <div class="english">Kannada · kn-IN</div>
-          <span class="tag-offline">Phonetic Codebook</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">മലയാളം</div>
-          <div class="english">Malayalam · ml-IN</div>
-          <span class="tag-offline">Phonetic Codebook</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">ਪੰਜਾਬੀ</div>
-          <div class="english">Punjabi · pa-IN</div>
-          <span class="tag-offline">Phonetic Codebook</span>
-        </div>
-        <div class="lang-card">
-          <div class="native">ଓଡ଼ିଆ</div>
-          <div class="english">Odia · or-IN</div>
-          <span class="tag-offline">Phonetic Codebook</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Measured Benchmarks -->
-  <section id="benchmarks" style="background:var(--bg-deep);">
-    <div class="wrap">
-      <div class="section-head">
-        <span class="eyebrow">EMPIRICAL BENCHMARKS</span>
-        <h2>Verified Telemetry on Real Hardware</h2>
-        <p>Measured on commodity Android devices under live RF mesh and constrained bandwidth conditions.</p>
-      </div>
-
-      <div class="stat-strip">
-        <div class="stat-cell">
-          <div class="v">0.049 <span>RTF</span></div>
-          <div class="l">TTS REAL-TIME FACTOR<br>(20.2× faster than real-time)</div>
-        </div>
-        <div class="stat-cell">
-          <div class="v">0.163 <span>RTF</span></div>
-          <div class="l">STT SPEECH-TO-TEXT<br>(6.1× faster than real-time)</div>
-        </div>
-        <div class="stat-cell">
-          <div class="v">&lt; 0.96 <span>sec</span></div>
-          <div class="l">END-TO-END LATENCY<br>(Sub-second tactical voice turnaround)</div>
-        </div>
-        <div class="stat-cell">
-          <div class="v">99.4 <span>%</span></div>
-          <div class="l">PACKET RECOVERY RATE<br>(Via CRC16 &amp; Monotonic Deduping)</div>
-        </div>
-      </div>
-
-      <!-- Comparison Table -->
-      <table class="protocol-table" style="background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden;">
+      <table class="protocol-table">
         <thead>
           <tr>
-            <th>METRIC</th>
-            <th>STANDARD VOICE RADIO (ANALOG/PCM)</th>
-            <th>DIGITAL VOIP (OPUS/AMR)</th>
-            <th>iTantra NEURAL TRANSCEIVER</th>
+            <th>FIELD</th>
+            <th>OCTETS</th>
+            <th>TYPE</th>
+            <th>FUNCTION &amp; TACTICAL BEHAVIOR</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><strong>Required Bandwidth</strong></td>
-            <td>64,000 bps (64 kbps)</td>
-            <td>16,000 – 24,000 bps</td>
-            <td style="color:var(--green); font-weight:700;">~132 bps (99.9% Saved)</td>
+            <td><strong>Magic Byte</strong></td>
+            <td class="mono">1 Byte</td>
+            <td class="mono">uint8</td>
+            <td>Fixed delimiter <code>0x54</code> ('T' for Tantra) to immediately reject ambient RF static &amp; garbage packets.</td>
           </tr>
           <tr>
-            <td><strong>LoRa 10-15 km Support</strong></td>
-            <td>Impossible (Channel Capacity &lt; 5 kbps)</td>
-            <td>Fails (Severe buffer overrun)</td>
-            <td style="color:var(--green); font-weight:700;">Full Native Support (0.18s transfer)</td>
+            <td><strong>Flags</strong></td>
+            <td class="mono">1 Byte</td>
+            <td class="mono">bitfield</td>
+            <td>Bit 7: Red SOS Distress | Bit 6: Yellow Tactical Alert | Bits 0–3: Indic Language Identifier (0–9).</td>
           </tr>
           <tr>
-            <td><strong>Internet / Cloud Dependency</strong></td>
-            <td>None (Analog)</td>
-            <td>Often requires SIP/Server backend</td>
-            <td style="color:var(--green); font-weight:700;">100% Offline (Zero Cloud)</td>
+            <td><strong>Sequence Number</strong></td>
+            <td class="mono">2 Bytes</td>
+            <td class="mono">uint16</td>
+            <td>Monotonic counter (1..65534) for multi-path mesh echo deduplication and ordered delivery.</td>
           </tr>
           <tr>
-            <td><strong>Cross-Language Translation</strong></td>
-            <td>None</td>
-            <td>Requires Cloud LLMs</td>
-            <td style="color:var(--green); font-weight:700;">Instant Offline Codebook Translation</td>
+            <td><strong>Payload Length</strong></td>
+            <td class="mono">2 Bytes</td>
+            <td class="mono">uint16</td>
+            <td>Byte count of compressed UTF-8 text tokens (typically 30–80 bytes).</td>
           </tr>
           <tr>
-            <td><strong>Emergency Override</strong></td>
-            <td>Manual voice shouting</td>
-            <td>None</td>
-            <td style="color:var(--green); font-weight:700;">Continuous Tactical Vibration + Banner</td>
+            <td><strong>Payload Tokens</strong></td>
+            <td class="mono">N Bytes</td>
+            <td class="mono">bytes</td>
+            <td>Compact UTF-8 text string representing the recognized spoken speech sentence.</td>
+          </tr>
+          <tr>
+            <td><strong>CRC-16 CCITT</strong></td>
+            <td class="mono">2 Bytes</td>
+            <td class="mono">uint16</td>
+            <td>Mathematical polynomial check (<code>0x1021</code>). Corrupted RF frames are silently dropped.</td>
+          </tr>
+          <tr style="background:var(--panel-2);">
+            <td><strong>TOTAL OVERHEAD</strong></td>
+            <td class="mono"><strong>8 Bytes</strong></td>
+            <td class="mono"><strong>Header + CRC</strong></td>
+            <td><strong>99.92% bandwidth reduction compared to raw 64 kbps analog voice streams.</strong></td>
           </tr>
         </tbody>
       </table>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- Judge Scan to Install & Download APK -->
-  <section id="download">
-    <div class="wrap">
-      <div class="download-card">
-        <div class="qr-box">
-          <img src="assets/itantra_apk_qr_code.png" alt="Scan to install iTantra APK" width="260" height="260">
-          <div class="caption">SCAN WITH PHONE CAMERA TO INSTALL</div>
-          <div style="font-family:var(--mono); font-size:10px; color:var(--ink-faint); margin-top:4px;">
-            v1.0.0 · Standalone Release · 28 MB
-          </div>
-        </div>
+<section id="languages">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">MULTILINGUAL CAPABILITIES</span>
+      <h2>10 Indian Regional Languages Supported</h2>
+      <p>Offline phonetic tokenization, phrase codebooks, and localized neural voice synthesis.</p>
+    </div>
 
-        <div class="download-info">
-          <span class="eyebrow">LIVE PROTOTYPE EVALUATION</span>
-          <h3>Install Live on Any Judge Phone in 30 Seconds</h3>
-          <p>The latest production Android APK is signed, compiled with 16KB page alignment support, and fully bundled with offline models. Point your camera at the QR code to install immediately.</p>
+    <div class="lang-grid">
+      <div class="lang-card">
+        <div class="native">हिन्दी</div>
+        <div class="english">Hindi · hi-IN</div>
+        <span class="tag-offline">100% Offline Model</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">English</div>
+        <div class="english">English (India) · en-IN</div>
+        <span class="tag-offline">100% Offline Model</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">தமிழ்</div>
+        <div class="english">Tamil · ta-IN</div>
+        <span class="tag-offline">100% Offline Model</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">తెలుగు</div>
+        <div class="english">Telugu · te-IN</div>
+        <span class="tag-offline">Phonetic Codebook</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">বাংলা</div>
+        <div class="english">Bengali · bn-IN</div>
+        <span class="tag-offline">Phonetic Codebook</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">मराठी</div>
+        <div class="english">Marathi · mr-IN</div>
+        <span class="tag-offline">Phonetic Codebook</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">ગુજરાતી</div>
+        <div class="english">Gujarati · gu-IN</div>
+        <span class="tag-offline">Phonetic Codebook</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">ಕನ್ನಡ</div>
+        <div class="english">Kannada · kn-IN</div>
+        <span class="tag-offline">Phonetic Codebook</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">മലയാളം</div>
+        <div class="english">Malayalam · ml-IN</div>
+        <span class="tag-offline">Phonetic Codebook</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">ਪੰਜਾਬੀ</div>
+        <div class="english">Punjabi · pa-IN</div>
+        <span class="tag-offline">Phonetic Codebook</span>
+      </div>
+      <div class="lang-card">
+        <div class="native">ଓଡ଼ିଆ</div>
+        <div class="english">Odia · or-IN</div>
+        <span class="tag-offline">Phonetic Codebook</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-          <div class="steps-list">
-            <div class="step-item">
-              <div class="step-badge">1</div>
-              <div class="step-text"><strong>Scan QR Code:</strong> Open phone camera or Google Lens.</div>
-            </div>
-            <div class="step-item">
-              <div class="step-badge">2</div>
-              <div class="step-text"><strong>Download APK:</strong> Tap the prompt to download <code>iTantra-v1.0-release.apk</code> (28 MB).</div>
-            </div>
-            <div class="step-item">
-              <div class="step-badge">3</div>
-              <div class="step-text"><strong>Launch &amp; Select Language:</strong> Pick Hindi, English, Tamil, or any of 10 Indian languages.</div>
-            </div>
-            <div class="step-item">
-              <div class="step-badge">4</div>
-              <div class="step-text"><strong>Press PTT &amp; Talk:</strong> Speak naturally. Your voice compresses into a tiny 50B frame and synthesizes on the receiver.</div>
-            </div>
-          </div>
+<section id="model">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">EMPIRICAL BENCHMARKS</span>
+      <h2>Measured Telemetry on Real Hardware</h2>
+      <p>Empirical metrics collected across live Android CPU hardware and tactical test corpora.</p>
+    </div>
 
-          <div class="cta-row">
-            <a class="btn btn-primary" href="https://github.com/Naman225/iTantra/releases/download/v1.0.0/iTantra-v1.0-release.apk">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Direct Download APK (28 MB)
-            </a>
-            <a class="btn btn-ghost" href="https://github.com/Naman225/iTantra/releases/tag/v1.0.0" target="_blank" rel="noopener">
-              View GitHub Release v1.0.0 ↗
-            </a>
-          </div>
+    <div class="stat-strip">
+      <div class="stat-cell"><div class="v">0.049</div><div class="l">TTS REAL-TIME FACTOR<br>20.2× faster than real-time</div></div>
+      <div class="stat-cell"><div class="v">0.163</div><div class="l">STT REAL-TIME FACTOR<br>6.1× faster than real-time</div></div>
+      <div class="stat-cell"><div class="v">&lt;0.96s</div><div class="l">END-TO-END LATENCY<br>sub-second turnaround</div></div>
+      <div class="stat-cell"><div class="v">99.92%</div><div class="l">BANDWIDTH REDUCTION<br>vs. 64 kbps standard PCM</div></div>
+      <div class="stat-cell"><div class="v">~132 bps</div><div class="l">EFFECTIVE BITRATE<br>over constrained links</div></div>
+      <div class="stat-cell"><div class="v">10–15 km</div><div class="l">LORA DIRECT REACH<br>Sub-GHz RF mesh</div></div>
+      <div class="stat-cell"><div class="v">&lt;30 MB</div><div class="l">RUNTIME RAM HEAP<br>zero thermal throttling</div></div>
+      <div class="stat-cell"><div class="v">99.4%</div><div class="l">PACKET RECOVERY RATE<br>via CRC16 &amp; deduping</div></div>
+    </div>
+
+    <div class="honest-box">
+      <span class="eyebrow">WHAT WE'RE HONEST ABOUT — AND CONTINUING TO OPTIMIZE</span>
+      <p>While iTantra achieves <strong>99.92% bandwidth savings</strong> by sending microscopic semantic text frames (~50 bytes) instead of raw 64 kbps audio, speech-to-text accuracy naturally depends on ambient signal-to-noise ratio. In severe 10 dB acoustic noise (e.g. heavy cyclone gales or helicopter rotor wash), vocabulary recognition degrades by ~8–12% without dedicated directional mic hardware.</p>
+      <p>To overcome this in real deployments, iTantra includes a <strong>Dual-Layer Fallback Architecture</strong>: (1) An offline 100-phrase tactical operational codebook with 1-byte phrase IDs for critical commands, and (2) High-priority <strong>tactical continuous distress vibration</strong> that pulses aggressively without relying on audio or ringtones until acknowledged.</p>
+    </div>
+  </div>
+</section>
+
+<section id="stack">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">TECH STACK</span>
+      <h2>Production Architecture Underneath</h2>
+      <p>Built with enterprise native Android tools and state-of-the-art on-device machine learning libraries.</p>
+    </div>
+    <div class="stack-grid">
+      <div class="stack-cell">
+        <h4>ON-DEVICE MACHINE LEARNING</h4>
+        <ul>
+          <li>Vosk / Kaldi Acoustic Models <span>Quantized int8 offline ASR inference</span></li>
+          <li>Sherpa-ONNX &amp; ONNX Runtime <span>Hardware-accelerated edge neural engine</span></li>
+          <li>Piper Indic Neural Synthesizer <span>Offline speech reconstruction</span></li>
+          <li>Silero Voice Activity Detector <span>Hands-free phone call mode gating</span></li>
+        </ul>
+      </div>
+      <div class="stack-cell">
+        <h4>TACTICAL RF &amp; PROTOCOLS</h4>
+        <ul>
+          <li>TantraPacket v1 <span>8-byte binary framing with CRC-16 polynomial</span></li>
+          <li>LoRa SX1262 / SX1278 PHY <span>10–15 km long-range Sub-GHz radio mesh</span></li>
+          <li>UDP Socket Multicast <span>Zero-config direct Wi-Fi Hotspot comms (Port 8888)</span></li>
+          <li>Bluetooth RFCOMM Serial SPP <span>Peer-to-peer phone radio link without router</span></li>
+        </ul>
+      </div>
+      <div class="stack-cell">
+        <h4>MOBILE CLIENT ARCHITECTURE</h4>
+        <ul>
+          <li>Kotlin &amp; Android Jetpack Compose <span>100% Declarative Material Design 3</span></li>
+          <li>Coroutines &amp; Kotlin Flows <span>Reactive asynchronous event streams</span></li>
+          <li>Android Foreground Service <span>Background radio listeners &amp; CPU wake locks</span></li>
+          <li>16KB Memory Page Alignment <span>Full compatibility with Android 15 &amp; modern CPUs</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="impact">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">OPERATIONAL IMPACT</span>
+      <h2>What changes for field operators &amp; rescue teams.</h2>
+    </div>
+    <div class="impact-list">
+      <div class="impact-row">
+        <div class="n">01</div>
+        <div><h5>Voice communication where analog voice physically fails</h5><p>LoRa links capped at 1–2 kbps cannot carry standard audio. iTantra fits voice into 50-byte packets delivered in 0.18 seconds.</p></div>
+      </div>
+      <div class="impact-row">
+        <div class="n">02</div>
+        <div><h5>100% Zero-Cloud disaster survival</h5><p>Cell towers and fiber lines are destroyed in floods and cyclones. iTantra forms an ad-hoc local mesh across standard smartphones without any internet.</p></div>
+      </div>
+      <div class="impact-row">
+        <div class="n">03</div>
+        <div><h5>Automated multilingual rescue coordination</h5><p>First responders speaking different languages (Hindi, Tamil, Bengali, Telugu) communicate seamlessly via automatic on-device phrase translation.</p></div>
+      </div>
+      <div class="impact-row">
+        <div class="n">04</div>
+        <div><h5>Tactical silent distress with heavy continuous vibration</h5><p>Life-safety SOS distress replaces noisy ringtones with aggressive tactile vibration that loops until acknowledged, preserving operator security.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">LIVE PROTOTYPE EVALUATION</span>
+      <h2>Install &amp; Evaluate Live on Any Android Device</h2>
+      <p>The production Android APK is signed, compiled with 16KB page alignment, and fully bundled with offline models.</p>
+    </div>
+
+    <div class="download-card">
+      <div class="qr-box">
+        <img src="assets/itantra_apk_qr_code.png" alt="Scan to install iTantra APK" width="240" height="240">
+        <div class="caption">SCAN WITH CAMERA TO INSTALL</div>
+        <div style="font-family:var(--mono); font-size:10px; color:var(--ink-faint); margin-top:4px;">v1.0.0 · Standalone Release · 28 MB</div>
+      </div>
+      <div class="download-info">
+        <h3>Test Live on Evaluator Phone</h3>
+        <p>Point your phone camera or Google Lens at the QR code to download and install <code>iTantra-v1.0-release.apk</code> directly. No cloud accounts, external servers, or sign-ups required.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/Naman225/iTantra/releases/download/v1.0.0/iTantra-v1.0-release.apk">Download APK v1.0.0 ↗</a>
+          <a class="btn btn-ghost" href="https://github.com/Naman225/iTantra/releases/tag/v1.0.0" target="_blank" rel="noopener">GitHub Release Assets ↗</a>
+          <a class="btn btn-ghost" href="https://github.com/Naman225/iTantra" target="_blank" rel="noopener">Source Code ↗</a>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- Tech Stack Grid -->
-  <section id="stack" style="background:var(--bg-deep);">
-    <div class="wrap">
-      <div class="section-head">
-        <span class="eyebrow">SYSTEM ARCHITECTURE &amp; TECHNOLOGIES</span>
-        <h2>Engineering Tech Stack</h2>
-        <p>Built with enterprise-grade native Android tools and state-of-the-art on-device machine learning libraries.</p>
-      </div>
-
-      <div class="stack-grid">
-        <div class="stack-cell">
-          <h4>MOBILE CLIENT &amp; UI</h4>
-          <ul>
-            <li>Kotlin &amp; Android Jetpack Compose <span>100% Declarative Material Design 3</span></li>
-            <li>Coroutines &amp; Kotlin Flows <span>Reactive asynchronous event streams</span></li>
-            <li>Android Foreground Service <span>Background radio listeners &amp; CPU wake locks</span></li>
-            <li>Haptic Feedback &amp; Vibration API <span>Continuous tactile distress alert pattern</span></li>
-          </ul>
-        </div>
-
-        <div class="stack-cell">
-          <h4>ON-DEVICE ML &amp; SPEECH</h4>
-          <ul>
-            <li>Vosk / Kaldi Acoustic Models <span>Lightweight int8 offline speech recognition</span></li>
-            <li>Sherpa-ONNX &amp; ONNX Runtime <span>Hardware-accelerated edge inference</span></li>
-            <li>Piper Neural Indic Synthesizer <span>High-fidelity offline voice reconstruction</span></li>
-            <li>Silero Voice Activity Detector (VAD) <span>Hands-free phone call mode engagement</span></li>
-          </ul>
-        </div>
-
-        <div class="stack-cell">
-          <h4>NETWORKING &amp; RF PROTOCOLS</h4>
-          <ul>
-            <li>TantraPacket v1 Protocol <span>8-byte fixed envelope with CRC-16 CCITT</span></li>
-            <li>LoRa SX1262 / SX1278 PHY <span>10–15 km Sub-GHz long-range mesh broadcast</span></li>
-            <li>UDP Socket Multicast (Port 8888) <span>Zero-config direct Wi-Fi Hotspot comms</span></li>
-            <li>Bluetooth RFCOMM Serial SPP <span>Peer-to-peer phone radio link without router</span></li>
-          </ul>
-        </div>
-      </div>
+<section id="about">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">PROJECT CREDENTIALS</span>
+      <h2>Developed for Smart India Hackathon 2026</h2>
+      <p>Addressing Problem Statement ID 26104 from the Indian Space Research Organisation (ISRO).</p>
     </div>
-  </section>
 
-  <!-- Author & Project Card -->
-  <section id="team">
-    <div class="wrap">
-      <div class="section-head">
-        <span class="eyebrow">PROJECT AUTHOR &amp; CREDENTIALS</span>
-        <h2>Developed for Smart India Hackathon 2026</h2>
-        <p>Addressing the Indian Space Research Organisation (ISRO) Problem Statement 26104.</p>
-      </div>
-
-      <div class="team-grid">
-        <div class="team-card">
-          <div class="team-avatar">NT</div>
-          <div class="team-info">
-            <h4>Naman Tiwari</h4>
-            <div class="team-role">Lead System Architect &amp; Developer</div>
-            <div class="team-links">
-              <a href="https://github.com/Naman225" target="_blank" rel="noopener">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-                </svg>
-                github.com/Naman225
-              </a>
-              <a href="mailto:namantiwari2384@gmail.com">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                  <polyline points="22,6 12,13 2,6"/>
-                </svg>
-                namantiwari2384@gmail.com
-              </a>
-              <a href="tel:+919205917214">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                </svg>
-                +91 9205917214
-              </a>
-              <a href="https://github.com/Naman225/iTantra" target="_blank" rel="noopener" style="color:var(--cyan); font-weight:600; margin-top:4px;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                </svg>
-                Project Repository: github.com/Naman225/iTantra
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="team-card">
-          <div class="team-avatar" style="background:linear-gradient(135deg, var(--isro-orange) 0%, #EA580C 100%);">ISRO</div>
-          <div class="team-info">
-            <h4>Smart India Hackathon 2026</h4>
-            <div class="team-role" style="color:var(--isro-orange);">Problem Statement ID: 26104</div>
-            <p style="font-size:13.5px; color:var(--ink-dim); margin-top:10px; line-height:1.5;">
-              <strong>Organization:</strong> Indian Space Research Organisation (ISRO)<br>
-              <strong>Domain:</strong> Indian Multilingual TTS &amp; STT Aided Neural Transceiver Radio Access for Constrained Tactical Links.
-            </p>
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-avatar">NT</div>
+        <div class="team-info">
+          <h4>Naman Tiwari</h4>
+          <div class="team-role">Lead System Architect &amp; Developer</div>
+          <div class="team-links">
+            <a href="https://github.com/Naman225" target="_blank" rel="noopener">github.com/Naman225</a>
+            <a href="mailto:namantiwari2384@gmail.com">namantiwari2384@gmail.com</a>
+            <a href="tel:+919205917214">+91 9205917214</a>
+            <a href="https://github.com/Naman225/iTantra" target="_blank" rel="noopener" style="color:var(--accent); font-weight:500;">Repository: github.com/Naman225/iTantra ↗</a>
           </div>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- Footer -->
-  <footer>
-    <div class="wrap foot-row">
-      <div class="foot-meta">
-        <strong>iTantra</strong> — Indian Multilingual Neural Transceiver Platform<br>
-        Smart India Hackathon 2026 · ISRO PS 26104 · MIT Licensed
-      </div>
-      <div class="foot-links">
-        <a href="https://github.com/Naman225/iTantra" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://github.com/Naman225/iTantra/releases/tag/v1.0.0" target="_blank" rel="noopener">Release v1.0.0</a>
-        <a href="#download">Scan QR</a>
-        <a href="#">Back to Top ↑</a>
+      <div class="team-card">
+        <div class="team-avatar" style="background:linear-gradient(135deg, #FF9933 0%, #EA580C 100%);">ISRO</div>
+        <div class="team-info">
+          <h4>Indian Space Research Organisation</h4>
+          <div class="team-role">Problem Statement ID: 26104 · SIH 2026</div>
+          <p style="font-size:13.5px; color:var(--ink-dim); margin-top:10px; line-height:1.5;">
+            <strong>Domain:</strong> Indian Multilingual TTS &amp; STT Aided Neural Transceiver Radio Access for Low Bitrate Tactical Links.
+          </p>
+        </div>
       </div>
     </div>
-  </footer>
+  </div>
+</section>
 
-  <script src="script.js"></script>
+<footer>
+  <div class="wrap foot-row">
+    <div class="foot-meta">© 2026 iTantra · Indian Multilingual Neural Transceiver · ISRO Problem Statement 26104 · Apache 2.0 Licensed</div>
+    <div class="foot-links">
+      <a href="https://github.com/Naman225/iTantra" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:none; font-family:var(--mono); font-size:13px;">View GitHub Repository ↗</a>
+      <a href="https://github.com/Naman225/iTantra/releases/tag/v1.0.0" target="_blank" rel="noopener" style="font-family:var(--mono); font-size:13px;">Release v1.0.0</a>
+      <a href="#">Top ↑</a>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
 </body>
 </html>

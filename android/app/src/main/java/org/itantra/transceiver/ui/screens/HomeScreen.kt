@@ -42,9 +42,12 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import org.itantra.transceiver.audio.AudioPlayerManager
 import org.itantra.transceiver.emergency.EmergencyAlertManager
+import org.itantra.transceiver.engine.ModelStore
 import org.itantra.transceiver.engine.SpeechToTextManager
 import org.itantra.transceiver.engine.TextToSpeechManager
+import org.itantra.transceiver.protocol.PhraseCodebook
 import org.itantra.transceiver.protocol.TantraPacket
+import org.itantra.transceiver.radio.RadioBus
 import org.itantra.transceiver.radio.UdpRadioTransceiver
 
 data class TransmissionItem(
@@ -63,7 +66,10 @@ fun HomeScreen(
     sttManager: SpeechToTextManager,
     onStartPtt: (Int) -> Unit,
     onStopPtt: (Boolean, Int, (TantraPacket) -> Unit) -> Unit,
-    onSendDirectText: (String, Int, Boolean, (TantraPacket) -> Unit) -> Unit
+    onSendDirectText: (String, Int, Boolean, (TantraPacket) -> Unit) -> Unit,
+    sosCountdown: Pair<TantraPacket, Int>? = null,
+    onCancelSos: () -> Unit = {},
+    onConfirmSos: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -99,18 +105,29 @@ fun HomeScreen(
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
 
-        radio.incomingPackets.collect { packet ->
+        RadioBus.incomingPackets.collect { packet ->
             messageLog.add(0, TransmissionItem(packet, isIncoming = true))
+
+            // Cross-Language Tactical Translation (I-14)
+            // If the message matches an operational phrase, translate to receiver's selected language
+            val targetLangCode = TantraPacket.LANG_CODES.getOrElse(selectedLangId) { "en" }
+            val phraseId = PhraseCodebook.findPhraseId(packet.text)
+            val spokenText = if (phraseId != null) {
+                PhraseCodebook.getTranslation(phraseId, targetLangCode) ?: packet.text
+            } else {
+                packet.text
+            }
+
             if (packet.isEmergency) {
                 alertManager.overrideVolumeToMax()
                 alertManager.triggerDistressVibration()
-                ttsManager.speak(packet.text, packet.langCode, isEmergency = true)
+                ttsManager.speak(spokenText, targetLangCode, isEmergency = true)
             } else if (packet.isAlert) {
                 alertManager.triggerDistressVibration()
-                ttsManager.speak("Warning: " + packet.text, packet.langCode, isEmergency = false)
+                ttsManager.speak("Warning: " + spokenText, targetLangCode, isEmergency = false)
             } else {
                 audioPlayer.playRogerBeep()
-                ttsManager.speak(packet.text, packet.langCode, isEmergency = false)
+                ttsManager.speak(spokenText, targetLangCode, isEmergency = false)
             }
         }
     }
@@ -175,6 +192,13 @@ fun HomeScreen(
                         color = PrimaryDark,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(AccentGreen)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
@@ -319,7 +343,7 @@ fun HomeScreen(
 
         // Live Speech Recognition Status Banner
         AnimatedVisibility(
-            visible = isPttPressed || isCallActive || partialText.isNotBlank() || isProcessing,
+            visible = isPttPressed || isCallActive || isProcessing,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
@@ -956,42 +980,68 @@ fun HomeScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp)
+                        .height(320.dp)
                 ) {
                     items(10) { idx ->
                         val isSelected = selectedLangId == idx
+
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 3.dp)
+                                .padding(vertical = 3.5.dp)
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     selectedLangId = idx
                                     prefs.edit().putInt("preferred_lang_id", idx).apply()
+                                    sttManager.resetPartialText()
                                     showLanguageDialog = false
-                                    Toast.makeText(context, "Switched to ${TantraPacket.LANG_NAMES[idx]}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Switched to ${TantraPacket.LANG_NAMES[idx]} (100% Offline Ready)", Toast.LENGTH_SHORT).show()
                                 },
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isSelected) PrimaryLight else SurfaceGray
                             ),
-                            border = if (isSelected) BorderStroke(1.dp, PrimaryBlue) else null,
-                            shape = RoundedCornerShape(8.dp)
+                            border = if (isSelected) BorderStroke(1.2.dp, PrimaryBlue) else null,
+                            shape = RoundedCornerShape(10.dp)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(
-                                    text = nativeNames[idx],
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) PrimaryBlue else TextDark
-                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = nativeNames[idx],
+                                        fontSize = 14.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                        color = if (isSelected) PrimaryBlue else TextDark
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(AccentGreen)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = "Active • 100% Offline Speech & Voice",
+                                            fontSize = 10.5.sp,
+                                            color = AccentGreen,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+
                                 if (isSelected) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = "Selected",
+                                        tint = PrimaryBlue,
+                                        modifier = Modifier.size(22.dp)
+                                    )
                                 }
                             }
                         }
@@ -1001,6 +1051,93 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(onClick = { showLanguageDialog = false }) {
                     Text("Close", color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            containerColor = CardWhite,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // 3-SECOND LIFE SAFETY SOS CANCELLATION MODAL DIALOG (I-06)
+    sosCountdown?.let { (pkt, secondsLeft) ->
+        AlertDialog(
+            onDismissRequest = { /* Modal: Operator must confirm or cancel */ },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = SOSRed, modifier = Modifier.size(26.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "🚨 EMERGENCY SOS TRIGGERED",
+                        fontWeight = FontWeight.ExtraBold,
+                        color = SOSRed,
+                        fontSize = 17.sp
+                    )
+                }
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Distress voice trigger recognized:",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = SOSRed.copy(alpha = 0.08f)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "\"${pkt.text}\"",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = SOSRed,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .background(SOSRed.copy(alpha = 0.15f))
+                            .border(2.dp, SOSRed, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${secondsLeft}s",
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = SOSRed
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Broadcasting to tactical network in ${secondsLeft}s unless aborted",
+                        color = TextSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = onConfirmSos,
+                    colors = ButtonDefaults.buttonColors(containerColor = SOSRed),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("SEND NOW", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = onCancelSos,
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFFD1D5DB))
+                ) {
+                    Text("CANCEL SOS", color = TextDark, fontWeight = FontWeight.SemiBold)
                 }
             },
             containerColor = CardWhite,

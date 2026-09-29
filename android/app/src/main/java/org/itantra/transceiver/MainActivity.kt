@@ -28,14 +28,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import org.itantra.transceiver.audio.AudioPlayerManager
 import org.itantra.transceiver.emergency.EmergencyAlertManager
+import org.itantra.transceiver.emergency.KeywordClassifier
 import org.itantra.transceiver.emergency.NotificationHelper
 import org.itantra.transceiver.engine.SpeechToTextManager
 import org.itantra.transceiver.engine.TextToSpeechManager
 import org.itantra.transceiver.protocol.TantraPacket
+import org.itantra.transceiver.radio.BluetoothServerManager
 import org.itantra.transceiver.radio.BluetoothTransceiver
+import org.itantra.transceiver.radio.RadioBus
+import org.itantra.transceiver.radio.RadioService
 import org.itantra.transceiver.radio.UdpRadioTransceiver
 import org.itantra.transceiver.ui.screens.*
 
@@ -44,6 +49,7 @@ enum class NavPage(val title: String, val icon: ImageVector) {
     HOME("Radio", Icons.Default.Mic),
     DASHBOARD("Dashboard", Icons.Default.Dashboard),
     CONNECT("Connect", Icons.Default.Wifi),
+    LORA("LoRa Radio Broadcast", Icons.Default.Sensors),
     PROFILE("Profile & Login", Icons.Default.AccountCircle),
     ABOUT("About", Icons.Default.Info),
     CONTACT("Contact Us", Icons.Default.Email)
@@ -53,64 +59,87 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var radioTransceiver: UdpRadioTransceiver
     private lateinit var audioPlayer: AudioPlayerManager
-    private lateinit var alertManager: EmergencyAlertManager
+    private lateinit var alertManager: EmergencyAlertManager    
     private lateinit var ttsManager: TextToSpeechManager
     private lateinit var sttManager: SpeechToTextManager
     private lateinit var btTransceiver: BluetoothTransceiver
     private lateinit var notificationHelper: NotificationHelper
+    private var btServerManager: BluetoothServerManager? = null
 
     private var pendingEmergency = false
     private var pendingLangId = 0
     private var pendingOnSent: ((TantraPacket) -> Unit)? = null
 
-    // 3-Tier Keyword Detection: Red SOS vs Yellow Alert across ALL 10 Mandated Indian Languages
-    // Includes Native Scripts (Devanagari, Tamil, Telugu, Bengali, Gujarati, Kannada, Malayalam, Odia) + Latin Transliterations + Common inflected forms
-    private val sosKeywords = listOf(
-        // English / International
-        "sos", "s.o.s", "help", "emergency", "mayday", "distress", "evacuate", "rescue",
-        // Hindi & Marathi (Devanagari)
-        "एसओएस", "एस ओ एस", "हेल्प", "इमरजेंसी", "रेस्क्यू", "बचाओ", "बचाव", "आपातकाल", "आपातकालीन", "संकट", "मदद", "तुरंत", "सहायता", "वाचवा", "आणीबाणी",
-        // Tamil
-        "காப்பாற்றுங்கள்", "காப்பாது", "உதவி", "அவசரம்", "ஆபத்து", "மீட்பு",
-        // Telugu
-        "కాపాడండి", "సహాయం", "అత్యవసరం", "ఆపద", "రక్షించండి",
-        // Bengali
-        "বাঁচাও", "জরুরি", "সাহায্য", "উদ্ধার",
-        // Gujarati
-        "બચાવો", "મદદ", "કટોકટી", "બચાવ",
-        // Kannada
-        "ಉಳಿಸಿ", "ಸಹಾಯ", "ತುರ್ತು", "ಕಾಪಾಡಿ",
-        // Malayalam
-        "രക്ഷിക്കൂ", "സഹായം", "അടിയന്തരാവസ്ഥ",
-        // Odia
-        "ବଞ୍ଚାଅ", "ସାହାଯ୍ୟ", "ଜରୁରୀକାଳୀନ", "ରକ୍ଷାକର",
-        // Transliterations
-        "bachao", "bachav", "madad", "aapatkal", "aapatkaleen", "kaapadu", "kaapaathunga", "aabathu", "udhavi", "vachva", "shishya"
-    )
+    // Monotonic Sequence Counter (I-09)
+    private val sequenceCounter = java.util.concurrent.atomic.AtomicInteger(1)
+    private var localNodeId: Int = 1001
 
-    private val alertKeywords = listOf(
-        // English / International
-        "alert", "alerts", "warning", "warnings", "danger", "dangerous", "caution", "hazard", "threat",
-        // Hindi & Marathi (Devanagari - including transliterated spoken words like अलर्ट, वार्निंग)
-        "खतरा", "खतरे", "खतरों", "खतरनाक", "अलर्ट", "अलर्ट्स", "चेतावनी", "सावधान", "सावधानी", "सतर्क", "सतर्कता", "धोका", "धोके", "वार्निंग",
-        // Tamil
-        "எச்சரிக்கை", "கவனம்", "அபாயம்", "எச்சரிக்கை மணி",
-        // Telugu
-        "ప్రమాదం", "హెచ్చరిక", "జాగ్రత్త", "అప్రమత్తత",
-        // Bengali
-        "বিপদ", "সতর্কতা", "হুঁশিয়ার", "অ্যালার্ট",
-        // Gujarati
-        "ખતરો", "ચેતવણી", "સાવધાન", "જોખમ",
-        // Kannada
-        "ಅಪಾಯ", "ಎಚ್ಚರಿಕೆ", "ಜಾಗರೂಕರಾಗಿರಿ",
-        // Malayalam
-        "அபകടം", "ജാഗ്രത", "മുന്നറിയിപ്പ്",
-        // Odia
-        "ବିପଦ", "ଚେତାବନୀ", "ସତର୍କତା",
-        // Transliterations & Romanized Hindi/Tamil/Telugu/etc.
-        "khatra", "khatre", "khatron", "khatarnak", "chetawani", "savdhan", "dhoka", "eccarikkai",
-        "abaththukkuriyeedu", "kavanam", "abayam", "pramadham", "hoshra", "bipod", "jokham", "apaya"
-    )
+    // 3-Second Life Safety SOS State Machine (I-06)
+    val sosCountdownState = kotlinx.coroutines.flow.MutableStateFlow<Pair<TantraPacket, Int>?>(null)
+    private var activeSosJob: kotlinx.coroutines.Job? = null    private var activeSosCallback: ((TantraPacket) -> Unit)? = null
+
+    private fun nextSeqNum(): Int {
+        val next = sequenceCounter.getAndIncrement()
+        if (next > 65534) {
+            sequenceCounter.set(1)
+            return 1
+        }
+        return next
+    }
+
+    private fun startSosCountdown(packet: TantraPacket, onSent: ((TantraPacket) -> Unit)?) {
+        activeSosJob?.cancel()
+        activeSosCallback = onSent
+        activeSosJob = lifecycleScope.launch {
+            for (sec in 3 downTo 1) {
+                sosCountdownState.value = Pair(packet, sec)
+                kotlinx.coroutines.delay(1000)
+            }
+            val p = sosCountdownState.value?.first ?: packet
+            sosCountdownState.value = null
+            activeSosJob = null
+            RadioBus.transmit(p)
+            audioPlayer.playRogerBeep()
+            val cb = activeSosCallback
+            activeSosCallback = null
+            runOnUiThread { cb?.invoke(p) }
+        }
+    }
+
+    fun cancelPendingSos() {
+        val pending = sosCountdownState.value?.first
+        activeSosJob?.cancel()
+        activeSosJob = null
+        sosCountdownState.value = null
+        if (pending != null) {
+            val cb = activeSosCallback
+            activeSosCallback = null
+            val downgraded = pending.copy(isEmergency = false, isAlert = false)
+            RadioBus.transmit(downgraded)
+            audioPlayer.playRogerBeep()
+            runOnUiThread {
+                cb?.invoke(downgraded)
+                Toast.makeText(this, "🚨 SOS Cancelled. Sent as routine message.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun confirmPendingSosImmediately() {
+        val pending = sosCountdownState.value?.first
+        activeSosJob?.cancel()
+        activeSosJob = null
+        sosCountdownState.value = null
+        if (pending != null) {
+            val cb = activeSosCallback
+            activeSosCallback = null
+            RadioBus.transmit(pending)
+            audioPlayer.playRogerBeep()
+            runOnUiThread {
+                cb?.invoke(pending)
+                Toast.makeText(this, "🚨 Emergency SOS Sent Immediately.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -132,6 +161,48 @@ class MainActivity : ComponentActivity() {
         btTransceiver.init(this)
 
         radioTransceiver.startListening()
+
+        // Start Background Foreground Service (I-10)
+        try {
+            RadioService.start(this)
+        } catch (e: Exception) {
+            android.util.Log.w("MainActivity", "Failed to start RadioService: ${e.message}")
+        }
+
+        // Setup persistent local node ID for deduplication, loopback drop, and security (I-09)
+        val savedNodeId = prefs.getInt("local_node_id", 0)
+        localNodeId = if (savedNodeId != 0) savedNodeId else (1000..65000).random().also {
+            prefs.edit().putInt("local_node_id", it).apply()
+        }
+        RadioBus.setLocalNodeId(localNodeId)
+
+        // Pipe UDP packets into unified RadioBus
+        lifecycleScope.launch {
+            radioTransceiver.incomingPackets.collect { packet ->
+                RadioBus.postIncoming(packet, "UDP")
+            }
+        }
+
+        // Pipe Bluetooth client packets into unified RadioBus
+        lifecycleScope.launch {
+            btTransceiver.incomingPackets.collect { packet ->
+                RadioBus.postIncoming(packet, "BT_CLIENT")
+            }
+        }
+
+        // Start Bluetooth RFCOMM Server for direct peer connections (I-07)
+        try {
+            val btManager = getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
+            btServerManager = BluetoothServerManager(btManager?.adapter) { packet ->
+                RadioBus.postIncoming(packet, "BT_SERVER")
+            }
+            btServerManager?.startListening()
+        } catch (e: Exception) {
+            android.util.Log.w("MainActivity", "Failed to start BluetoothServerManager: ${e.message}")
+        }
+
+        // Register transceivers with unified RadioBus for multi-transport dispatch (I-07)
+        RadioBus.registerTransceivers(radioTransceiver, btTransceiver, btServerManager)
 
         // Request runtime permissions
         val permissionsToRequest = mutableListOf<String>()
@@ -174,7 +245,10 @@ class MainActivity : ComponentActivity() {
                 },
                 onSendDirectText = { text, langId, isEmergency, onSent ->
                     transmitDirectMessage(text, langId, isEmergency, onSent)
-                }
+                },
+                sosCountdownState = sosCountdownState,
+                onCancelSos = { cancelPendingSos() },
+                onConfirmSos = { confirmPendingSosImmediately() }
             )
         }
     }
@@ -205,25 +279,11 @@ class MainActivity : ComponentActivity() {
 
         val trimmedText = text.trim()
         if (trimmedText.isNotBlank()) {
-            val lowerText = trimmedText.lowercase()
-            // Normalize punctuation so terms like "खतरा!", "अलर्ट!", "alert," match reliably
-            val cleanText = lowerText
-                .replace("।", " ")
-                .replace(".", " ")
-                .replace(",", " ")
-                .replace("!", " ")
-                .replace("?", " ")
-                .replace("-", " ")
-                .replace("_", " ")
-                .replace("  ", " ")
-
-            // 3-Tier Classification:
-            // Tier 1: Red SOS
-            val isAutoSos = sosKeywords.any { cleanText.contains(it) || lowerText.contains(it) }
+            // Intelligent 3-Tier Keyword Classification (I-06)
+            val classification = KeywordClassifier.classify(trimmedText)
+            val isAutoSos = classification.isEmergencySos
             val isEmergency = manualEmergency || isAutoSos
-
-            // Tier 2: Yellow Alert (if not Red SOS)
-            val isAlert = if (isEmergency) false else alertKeywords.any { cleanText.contains(it) || lowerText.contains(it) }
+            val isAlert = if (isEmergency) false else classification.isTacticalAlert
 
             if (isEmergency) {
                 runOnUiThread {
@@ -247,18 +307,23 @@ class MainActivity : ComponentActivity() {
                 isEmergency = isEmergency,
                 isAlert = isAlert,
                 isPtt = true,
-                seqNum = (1..65534).random()
+                seqNum = nextSeqNum(),
+                nodeId = localNodeId
             )
 
-            radioTransceiver.transmit(packet)
-            audioPlayer.playRogerBeep()
-            runOnUiThread { onSent?.invoke(packet) }
+            if (isEmergency) {
+                startSosCountdown(packet, onSent)
+            } else {
+                RadioBus.transmit(packet)
+                audioPlayer.playRogerBeep()
+                runOnUiThread { onSent?.invoke(packet) }
+            }
         } else {
             if (manualEmergency) {
                 val emergencyText = when (selectedLangId) {
                     0 -> "आपातकालीन संदेश: संकट संकेत सक्रिय किया गया तुरंत सहायता भेजें!" // Hindi
                     1 -> "Emergency SOS: Distress beacon activated immediate assistance required!" // English
-                    2 -> "કટોકટી સંદેશ: તાત્કાલિક સહાય મોકલો!" // Gujarati
+                    2 -> "કટોકટી संदेश: તાત્કાલિક સહાય મોકલો!" // Gujarati
                     3 -> "आणीबाणी संदेश: संकट सिग्नल सक्रिय झाला आहे त्वरित मदत पाठवा!" // Marathi
                     4 -> "ತುರ್ತು ಸಂದೇಶ: ತಕ್ಷಣವೇ ಸಹಾಯ ಕಳುಹಿಸಿ!" // Kannada
                     5 -> "അടിയന്തര സന്ദേശം: ഉടൻ സഹായം അയക്കുക!" // Malayalam
@@ -274,11 +339,10 @@ class MainActivity : ComponentActivity() {
                     isEmergency = true,
                     isAlert = false,
                     isPtt = true,
-                    seqNum = (1..65534).random()
+                    seqNum = nextSeqNum(),
+                    nodeId = localNodeId
                 )
-                radioTransceiver.transmit(packet)
-                audioPlayer.playRogerBeep()
-                runOnUiThread { onSent?.invoke(packet) }
+                startSosCountdown(packet, onSent)
             } else {
                 runOnUiThread {
                     val msg = errorMsg ?: "No voice recognized. Hold the button and speak clearly."
@@ -296,12 +360,11 @@ class MainActivity : ComponentActivity() {
     ) {
         if (text.isBlank()) return
 
-        val lowerText = text.lowercase()
-
-        // 3-Tier Classification for Direct Text
-        val isAutoSos = sosKeywords.any { lowerText.contains(it) }
+        // 3-Tier Classification for Direct Text (I-06)
+        val classification = KeywordClassifier.classify(text)
+        val isAutoSos = classification.isEmergencySos
         val finalEmergency = isEmergency || isAutoSos
-        val finalAlert = if (finalEmergency) false else alertKeywords.any { lowerText.contains(it) }
+        val finalAlert = if (finalEmergency) false else classification.isTacticalAlert
 
         if (finalEmergency && !isEmergency) {
             runOnUiThread {
@@ -319,15 +382,26 @@ class MainActivity : ComponentActivity() {
             isEmergency = finalEmergency,
             isAlert = finalAlert,
             isPtt = false,
-            seqNum = (1..65534).random()
+            seqNum = nextSeqNum(),
+            nodeId = localNodeId
         )
-        radioTransceiver.transmit(packet)
-        audioPlayer.playRogerBeep()
-        onSent(packet)
+        if (finalEmergency) {
+            startSosCountdown(packet, onSent)
+        } else {
+            RadioBus.transmit(packet)
+            audioPlayer.playRogerBeep()
+            onSent(packet)
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        try {
+            RadioService.stop(this)
+            btServerManager?.stopListening()
+        } catch (e: Exception) {
+            // Ignored
+        }
         radioTransceiver.stop()
         btTransceiver.cleanup(this)
         sttManager.shutdown()
@@ -347,15 +421,18 @@ fun ITantraApp(
     notificationHelper: NotificationHelper,
     onStartPtt: (Int) -> Unit,
     onStopPtt: (Boolean, Int, (TantraPacket) -> Unit) -> Unit,
-    onSendDirectText: (String, Int, Boolean, (TantraPacket) -> Unit) -> Unit
+    onSendDirectText: (String, Int, Boolean, (TantraPacket) -> Unit) -> Unit,
+    sosCountdownState: kotlinx.coroutines.flow.StateFlow<Pair<TantraPacket, Int>?>,
+    onCancelSos: () -> Unit,
+    onConfirmSos: () -> Unit
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("itantra_profile", Context.MODE_PRIVATE) }
     var isLoggedIn by remember { mutableStateOf(prefs.getBoolean("is_logged_in", false)) }
 
-    // Listen for incoming radio packets and trigger system notifications
+    // Listen for incoming radio packets via unified RadioBus and trigger system notifications
     LaunchedEffect(Unit) {
-        radio.incomingPackets.collect { packet ->
+        RadioBus.incomingPackets.collect { packet ->
             notificationHelper.showMessageNotification(
                 sender = "${packet.langName} Radio Unit",
                 message = packet.text,
@@ -383,7 +460,7 @@ fun ITantraApp(
                 val guestRadioId = "GUEST-${(1000..9999).random()}"
                 prefs.edit()
                     .putString("name", "Guest Operator")
-                    .putString("phone", "9205917214")
+                    .putString("phone", "XXXXXXXXXX")
                     .putString("dob", "01/01/2000")
                     .putString("radio_id", guestRadioId)
                     .putBoolean("is_logged_in", true)
@@ -403,6 +480,7 @@ fun ITantraApp(
         val isBtScanning by btTransceiver.isScanning.collectAsState()
         val connectedBtDevice by btTransceiver.connectedDeviceName.collectAsState()
         val connectedPeers by radio.connectedPeers.collectAsState()
+        val sosCountdown by sosCountdownState.collectAsState()
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -600,7 +678,10 @@ fun ITantraApp(
                             sttManager = sttManager,
                             onStartPtt = onStartPtt,
                             onStopPtt = onStopPtt,
-                            onSendDirectText = onSendDirectText
+                            onSendDirectText = onSendDirectText,
+                            sosCountdown = sosCountdown,
+                            onCancelSos = onCancelSos,
+                            onConfirmSos = onConfirmSos
                         )
                         NavPage.DASHBOARD -> DashboardScreen(
                             connectedPeers = connectedPeers,
@@ -633,6 +714,22 @@ fun ITantraApp(
                             connectedBtDevice = connectedBtDevice,
                             onScanBt = { btTransceiver.startDiscovery(context) },
                             onConnectBt = { address -> btTransceiver.connectToDevice(address) }
+                        )
+                        NavPage.LORA -> LoraBroadcastScreen(
+                            btDevices = btDevices,
+                            isBtScanning = isBtScanning,
+                            connectedBtDevice = connectedBtDevice,
+                            onScanBt = { btTransceiver.startDiscovery(context) },
+                            onConnectBt = { address -> btTransceiver.connectToDevice(address) },
+                            onDisconnectBt = { btTransceiver.disconnect() },
+                            onSendLoraPing = {
+                                val currentName = prefs.getString("name", "Operator") ?: "Operator"
+                                onSendDirectText("PING: $currentName (865.2 MHz LoRa)", 1, false) {}
+                            },
+                            onSendLoraSos = {
+                                val currentName = prefs.getString("name", "Operator") ?: "Operator"
+                                onSendDirectText("EMERGENCY SOS: $currentName requests immediate rescue on LoRa 865.2 MHz!", 0, true) {}
+                            }
                         )
                         NavPage.PROFILE -> PersonalInfoScreen(
                             onLogout = {

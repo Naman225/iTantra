@@ -15,7 +15,8 @@ data class TantraPacket(
     val isEmergency: Boolean = false,
     val isAlert: Boolean = false,
     val isPtt: Boolean = true,
-    val seqNum: Int = 1
+    val seqNum: Int = 1,
+    val nodeId: Int = 0
 ) {
     val priorityLevel: Int
         get() = when {
@@ -29,7 +30,10 @@ data class TantraPacket(
         const val FLAG_ALERT_EMERGENCY: Byte = 0x80.toByte() // Bit 7: SOS Red
         const val FLAG_PTT_MODE: Byte = 0x40.toByte()        // Bit 6
         const val FLAG_TACTICAL_ALERT: Byte = 0x20.toByte()  // Bit 5: Alert Yellow
+        const val FLAG_AUTH_HMAC: Byte = 0x10.toByte()       // Bit 4: AES/HMAC Authenticated Frame
         const val LANG_MASK: Byte = 0x0F                     // Bits 0-3
+
+        val DEFAULT_SECRET_KEY = "iTantra-Tactical-Team-Key-2026".toByteArray(StandardCharsets.UTF_8)
 
         // 10 Mandated Indian Languages Mapping
         val LANG_NAMES = arrayOf(
@@ -112,9 +116,20 @@ data class TantraPacket(
         }
 
         /**
+         * Computes HMAC-SHA256 truncated to 8 bytes for micro-packet authentication.
+         */
+        fun computeHmac(data: ByteArray, offset: Int, length: Int, key: ByteArray = DEFAULT_SECRET_KEY): ByteArray {
+            val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+            mac.init(javax.crypto.spec.SecretKeySpec(key, "HmacSHA256"))
+            mac.update(data, offset, length)
+            val full = mac.doFinal()
+            return full.copyOfRange(0, 8)
+        }
+
+        /**
          * Parses and validates raw bytes into a TantraPacket.
          */
-        fun decode(bytes: ByteArray): TantraPacket {
+        fun decode(bytes: ByteArray, key: ByteArray = DEFAULT_SECRET_KEY): TantraPacket {
             if (bytes.size < 8) {
                 throw IllegalArgumentException("Packet too short: ${bytes.size} bytes (min 8)")
             }
@@ -128,18 +143,46 @@ data class TantraPacket(
             val flags = buffer.get().toInt()
             val seqNum = buffer.short.toInt() and 0xFFFF
             val payloadLen = buffer.short.toInt() and 0xFFFF
+            val isAuth = (flags and (FLAG_AUTH_HMAC.toInt() and 0xFF)) != 0
 
-            if (bytes.size < 6 + payloadLen + 2) {
-                throw IllegalArgumentException("Incomplete packet: expected ${6 + payloadLen + 2}, got ${bytes.size}")
+            val expectedTotalLen = if (isAuth) {
+                6 + 2 + payloadLen + 8 + 2
+            } else {
+                6 + payloadLen + 2
+            }
+
+            if (bytes.size < expectedTotalLen) {
+                throw IllegalArgumentException("Incomplete packet: expected $expectedTotalLen, got ${bytes.size}")
+            }
+
+            val nodeId = if (isAuth) {
+                buffer.short.toInt() and 0xFFFF
+            } else {
+                0
             }
 
             val payload = ByteArray(payloadLen)
             buffer.get(payload)
 
+            var isTampered = false
+            if (isAuth) {
+                val receivedHmac = ByteArray(8)
+                buffer.get(receivedHmac)
+                val expectedHmac = computeHmac(bytes, 0, 8 + payloadLen, key)
+                if (!java.security.MessageDigest.isEqual(receivedHmac, expectedHmac)) {
+                    isTampered = true
+                }
+            }
+
             val receivedCrc = buffer.short.toInt() and 0xFFFF
-            val computedCrc = crc16Ccitt(bytes, 6 + payloadLen)
+            val checkLength = if (isAuth) 8 + payloadLen + 8 else 6 + payloadLen
+            val computedCrc = crc16Ccitt(bytes, checkLength)
             if (receivedCrc != computedCrc) {
                 throw IllegalArgumentException("CRC mismatch: received 0x%04X, computed 0x%04X".format(receivedCrc, computedCrc))
+            }
+
+            if (isTampered) {
+                throw SecurityException("Security Alert: Invalid HMAC authentication tag on frame (node: $nodeId, seq: $seqNum). Potential spoofing or tampering!")
             }
 
             val isEmergency = (flags and (FLAG_ALERT_EMERGENCY.toInt() and 0xFF)) != 0
@@ -154,7 +197,8 @@ data class TantraPacket(
                 isEmergency = isEmergency,
                 isAlert = isAlert,
                 isPtt = isPtt,
-                seqNum = seqNum
+                seqNum = seqNum,
+                nodeId = nodeId
             )
         }
     }
@@ -166,9 +210,9 @@ data class TantraPacket(
         get() = if (langId in LANG_NAMES.indices) LANG_NAMES[langId] else "Hindi"
 
     /**
-     * Serializes into an 8-byte framed binary array.
+     * Serializes into a framed binary array with optional HMAC-SHA256 authentication.
      */
-    fun encode(): ByteArray {
+    fun encode(enableAuth: Boolean = true, key: ByteArray = DEFAULT_SECRET_KEY): ByteArray {
         val payload = text.toByteArray(StandardCharsets.UTF_8)
         val payloadLen = payload.size
 
@@ -176,20 +220,41 @@ data class TantraPacket(
         if (isEmergency) flags = flags or (FLAG_ALERT_EMERGENCY.toInt() and 0xFF)
         if (isAlert) flags = flags or (FLAG_TACTICAL_ALERT.toInt() and 0xFF)
         if (isPtt) flags = flags or (FLAG_PTT_MODE.toInt() and 0xFF)
+        if (enableAuth) flags = flags or (FLAG_AUTH_HMAC.toInt() and 0xFF)
 
-        val totalLen = 6 + payloadLen + 2
-        val buffer = ByteBuffer.allocate(totalLen).order(ByteOrder.BIG_ENDIAN)
+        if (enableAuth) {
+            val totalLen = 6 + 2 + payloadLen + 8 + 2
+            val buffer = ByteBuffer.allocate(totalLen).order(ByteOrder.BIG_ENDIAN)
 
-        buffer.put(MAGIC_BYTE)
-        buffer.put(flags.toByte())
-        buffer.putShort(seqNum.toShort())
-        buffer.putShort(payloadLen.toShort())
-        buffer.put(payload)
+            buffer.put(MAGIC_BYTE)
+            buffer.put(flags.toByte())
+            buffer.putShort(seqNum.toShort())
+            buffer.putShort(payloadLen.toShort())
+            buffer.putShort(nodeId.toShort())
+            buffer.put(payload)
 
-        val crc = crc16Ccitt(buffer.array(), 6 + payloadLen)
-        buffer.putShort(crc.toShort())
+            val hmac = computeHmac(buffer.array(), 0, 8 + payloadLen, key)
+            buffer.put(hmac)
 
-        return buffer.array()
+            val crc = crc16Ccitt(buffer.array(), 8 + payloadLen + 8)
+            buffer.putShort(crc.toShort())
+
+            return buffer.array()
+        } else {
+            val totalLen = 6 + payloadLen + 2
+            val buffer = ByteBuffer.allocate(totalLen).order(ByteOrder.BIG_ENDIAN)
+
+            buffer.put(MAGIC_BYTE)
+            buffer.put(flags.toByte())
+            buffer.putShort(seqNum.toShort())
+            buffer.putShort(payloadLen.toShort())
+            buffer.put(payload)
+
+            val crc = crc16Ccitt(buffer.array(), 6 + payloadLen)
+            buffer.putShort(crc.toShort())
+
+            return buffer.array()
+        }
     }
 
     /**

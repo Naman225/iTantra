@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    width: 680px;
+    height: 380px;
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+    overflow: hidden;
+  }
+
+  /* TOP HEADER PILL */
+  .header-badge {
+    align-self: flex-start;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 4px 16px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* 4-COLUMN CONTAINER */
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    flex: 1;
+    border: 2px solid #38bdf8;
+    border-radius: 18px;
+    padding: 8px;
+    background: #f8fafc;
+  }
+
+  /* INDIVIDUAL CATEGORY CARD */
+  .tech-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 8px 6px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  }
+
+  .cat-title {
+    font-size: 12px;
+    font-weight: 800;
+    text-align: center;
+    padding: 4px 6px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+  }
+  .title-ai { background: #fee2e2; color: #b91c1c; }
+  .title-radio { background: #e0f2fe; color: #0369a1; }
+  .title-ui { background: #fef3c7; color: #b45309; }
+  .title-sec { background: #dcfce7; color: #15803d; }
+
+  /* ITEM ROWS */
+  .tech-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex: 1;
+    justify-content: space-around;
+  }
+  .tech-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+  }
+  .tech-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .tech-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .tech-name {
+    font-size: 11px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .tech-desc {
+    font-size: 8.5px;
+    color: #64748b;
+    font-weight: 600;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+  <div class="header-badge">
+    <span>⚡ Technology Stack</span>
+  </div>
+
+  <div class="grid-container">
+
+    <!-- 1. AI & Speech -->
+    <div class="tech-card">
+      <div class="cat-title title-ai">AI & Speech Models</div>
+      <div class="tech-list">
+        <div class="tech-item">
+          <div class="tech-icon">🎙️</div>
+          <div class="tech-info">
+            <div class="tech-name">Vosk ASR</div>
+            <div class="tech-desc">Kaldi On-Device STT</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🗣️</div>
+          <div class="tech-info">
+            <div class="tech-name">Piper ONNX</div>
+            <div class="tech-desc">Fast Neural TTS</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🌐</div>
+          <div class="tech-info">
+            <div class="tech-name">Multilingual</div>
+            <div class="tech-desc">Hindi, English, Tamil</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">⚡</div>
+          <div class="tech-info">
+            <div class="tech-name">Energy VAD</div>
+            <div class="tech-desc">Silero Voice Detection</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Radio & Mesh -->
+    <div class="tech-card">
+      <div class="cat-title title-radio">Mesh & Protocols</div>
+      <div class="tech-list">
+        <div class="tech-item">
+          <div class="tech-icon">📦</div>
+          <div class="tech-info">
+            <div class="tech-name">TantraPacket</div>
+            <div class="tech-desc">~50 B Binary Protocol</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">📶</div>
+          <div class="tech-info">
+            <div class="tech-name">UDP Broadcast</div>
+            <div class="tech-desc">Zero-Config Port 8888</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">⚡</div>
+          <div class="tech-info">
+            <div class="tech-name">BT RFCOMM</div>
+            <div class="tech-desc">SPP Serial Radio Socket</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">📡</div>
+          <div class="tech-info">
+            <div class="tech-name">SX1262 LoRa</div>
+            <div class="tech-desc">Sub-GHz Long Reach</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Mobile UI & Client -->
+    <div class="tech-card">
+      <div class="cat-title title-ui">Mobile & Client</div>
+      <div class="tech-list">
+        <div class="tech-item">
+          <div class="tech-icon">📱</div>
+          <div class="tech-info">
+            <div class="tech-name">Android Native</div>
+            <div class="tech-desc">Kotlin SDK 34 / Jetpack</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🎨</div>
+          <div class="tech-info">
+            <div class="tech-name">Jetpack Compose</div>
+            <div class="tech-desc">Material 3 Reactive UI</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🔄</div>
+          <div class="tech-info">
+            <div class="tech-name">Coroutines Flow</div>
+            <div class="tech-desc">Async IO Dispatchers</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🎛️</div>
+          <div class="tech-info">
+            <div class="tech-name">AudioRecord</div>
+            <div class="tech-desc">16kHz 16-bit PCM Stream</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Security & Tactical -->
+    <div class="tech-card">
+      <div class="cat-title title-sec">Security & Edge</div>
+      <div class="tech-list">
+        <div class="tech-item">
+          <div class="tech-icon">🛡️</div>
+          <div class="tech-info">
+            <div class="tech-name">CRC-16 CCITT</div>
+            <div class="tech-desc">Frame Integrity Check</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🚨</div>
+          <div class="tech-info">
+            <div class="tech-name">SOS Override</div>
+            <div class="tech-desc">Priority Alarm Interrupt</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">🔒</div>
+          <div class="tech-info">
+            <div class="tech-name">Zero-Cloud</div>
+            <div class="tech-desc">100% On-Device Air-Gap</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">📊</div>
+          <div class="tech-info">
+            <div class="tech-name">Telemetry</div>
+            <div class="tech-desc">Packet / Airtime Stats</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

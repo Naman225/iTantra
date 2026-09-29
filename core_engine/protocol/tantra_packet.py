@@ -13,9 +13,11 @@ MAGIC_BYTE = 0x54
 # Flag bitmasks
 FLAG_ALERT_EMERGENCY = 0x80  # Bit 7: High Priority Distress / Alert
 FLAG_PTT_MODE        = 0x40  # Bit 6: PTT (1) vs Phone VAD Mode (0)
-FLAG_RESERVED_5      = 0x20  # Bit 5: Reserved
-FLAG_RESERVED_4      = 0x10  # Bit 4: Reserved
+FLAG_TACTICAL_ALERT  = 0x20  # Bit 5: Alert Yellow
+FLAG_AUTH_HMAC       = 0x10  # Bit 4: AES/HMAC Authenticated Frame
 LANG_MASK            = 0x0F  # Bits 0-3: Language ID (0 to 15)
+
+DEFAULT_SECRET_KEY = b"iTantra-Tactical-Team-Key-2026"
 
 # Language ID Mapping (10 Indian Languages)
 LANG_IDS = {
@@ -92,20 +94,27 @@ def crc16_ccitt(data: bytes) -> int:
     return crc
 
 
+import hmac
+import hashlib
+
 class TantraPacket:
     def __init__(
         self,
         text: str,
         lang_id: Optional[int] = None,
         is_emergency: bool = False,
+        is_alert: bool = False,
         is_ptt: bool = True,
         seq_num: int = 1,
+        node_id: int = 0,
         auto_detect_lang: bool = True
     ):
         self.text = text
         self.is_emergency = is_emergency
+        self.is_alert = is_alert
         self.is_ptt = is_ptt
         self.seq_num = seq_num & 0xFFFF
+        self.node_id = node_id & 0xFFFF
 
         # If lang_id is not explicitly provided, auto-detect it
         if lang_id is None:
@@ -122,7 +131,11 @@ class TantraPacket:
     def lang_name(self) -> str:
         return LANG_IDS.get(self.lang_id, ("hi", "Hindi"))[1]
 
-    def encode(self) -> bytes:
+    @staticmethod
+    def compute_hmac(data: bytes, key: bytes = DEFAULT_SECRET_KEY) -> bytes:
+        return hmac.new(key, data, hashlib.sha256).digest()[:8]
+
+    def encode(self, enable_auth: bool = False, key: bytes = DEFAULT_SECRET_KEY) -> bytes:
         payload = self.text.encode('utf-8')
         payload_len = len(payload)
         if payload_len > 65535:
@@ -131,18 +144,28 @@ class TantraPacket:
         flags = (self.lang_id & LANG_MASK)
         if self.is_emergency:
             flags |= FLAG_ALERT_EMERGENCY
+        if self.is_alert:
+            flags |= FLAG_TACTICAL_ALERT
         if self.is_ptt:
             flags |= FLAG_PTT_MODE
+        if enable_auth:
+            flags |= FLAG_AUTH_HMAC
 
-        header = struct.pack(">BBHH", MAGIC_BYTE, flags, self.seq_num, payload_len)
-        data_to_checksum = header + payload
-        crc = crc16_ccitt(data_to_checksum)
-        trailer = struct.pack(">H", crc)
-
-        return data_to_checksum + trailer
+        if enable_auth:
+            header = struct.pack(">BBHHH", MAGIC_BYTE, flags, self.seq_num, payload_len, self.node_id)
+            data_to_mac = header + payload
+            mac_tag = self.compute_hmac(data_to_mac, key)
+            data_to_checksum = data_to_mac + mac_tag
+            crc = crc16_ccitt(data_to_checksum)
+            return data_to_checksum + struct.pack(">H", crc)
+        else:
+            header = struct.pack(">BBHH", MAGIC_BYTE, flags, self.seq_num, payload_len)
+            data_to_checksum = header + payload
+            crc = crc16_ccitt(data_to_checksum)
+            return data_to_checksum + struct.pack(">H", crc)
 
     @classmethod
-    def decode(cls, raw_bytes: bytes) -> "TantraPacket":
+    def decode(cls, raw_bytes: bytes, key: bytes = DEFAULT_SECRET_KEY) -> "TantraPacket":
         if len(raw_bytes) < 8:
             raise ValueError(f"Packet too short: {len(raw_bytes)} bytes (min 8 required)")
 
@@ -150,18 +173,31 @@ class TantraPacket:
         if magic != MAGIC_BYTE:
             raise ValueError(f"Invalid magic byte: 0x{magic:02X} (expected 0x{MAGIC_BYTE:02X})")
 
-        expected_total_len = 6 + payload_len + 2
+        is_auth = bool(flags & FLAG_AUTH_HMAC)
+        expected_total_len = (6 + 2 + payload_len + 8 + 2) if is_auth else (6 + payload_len + 2)
         if len(raw_bytes) < expected_total_len:
             raise ValueError(f"Incomplete packet: expected {expected_total_len} bytes, got {len(raw_bytes)}")
 
-        payload_bytes = raw_bytes[6:6 + payload_len]
-        received_crc = struct.unpack(">H", raw_bytes[6 + payload_len:6 + payload_len + 2])[0]
+        if is_auth:
+            node_id = struct.unpack(">H", raw_bytes[6:8])[0]
+            payload_bytes = raw_bytes[8:8 + payload_len]
+            received_mac = raw_bytes[8 + payload_len:8 + payload_len + 8]
+            expected_mac = cls.compute_hmac(raw_bytes[:8 + payload_len], key)
+            if not hmac.compare_digest(received_mac, expected_mac):
+                raise PermissionError(f"Security Alert: Invalid HMAC authentication tag on frame (node: {node_id}, seq: {seq_num})")
+            computed_crc = crc16_ccitt(raw_bytes[:8 + payload_len + 8])
+            received_crc = struct.unpack(">H", raw_bytes[8 + payload_len + 8:8 + payload_len + 10])[0]
+        else:
+            node_id = 0
+            payload_bytes = raw_bytes[6:6 + payload_len]
+            computed_crc = crc16_ccitt(raw_bytes[:6 + payload_len])
+            received_crc = struct.unpack(">H", raw_bytes[6 + payload_len:6 + payload_len + 2])[0]
 
-        computed_crc = crc16_ccitt(raw_bytes[:6 + payload_len])
         if received_crc != computed_crc:
             raise ValueError(f"CRC Mismatch: computed 0x{computed_crc:04X}, received 0x{received_crc:04X}")
 
         is_emergency = bool(flags & FLAG_ALERT_EMERGENCY)
+        is_alert = bool(flags & FLAG_TACTICAL_ALERT)
         is_ptt = bool(flags & FLAG_PTT_MODE)
         lang_id = flags & LANG_MASK
         text = payload_bytes.decode('utf-8', errors='replace')
@@ -170,8 +206,10 @@ class TantraPacket:
             text=text,
             lang_id=lang_id,
             is_emergency=is_emergency,
+            is_alert=is_alert,
             is_ptt=is_ptt,
-            seq_num=seq_num
+            seq_num=seq_num,
+            node_id=node_id
         )
 
     def telemetry_summary(self, speech_duration_sec: float = 3.0) -> dict:

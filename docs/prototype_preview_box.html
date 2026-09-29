@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    width: 620px;
+    height: 380px;
+    background: #0b1120; /* Deep premium tactical dark blue */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #ffffff;
+    display: flex;
+    padding: 14px 16px;
+    gap: 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Subtle background radial glow */
+  .bg-glow {
+    position: absolute;
+    top: -50px;
+    left: -50px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* LEFT SIDE: PRODUCT SHOWCASE TEXT */
+  .left-banner {
+    flex: 1.15;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 2;
+  }
+
+  .brand-pill {
+    background: linear-gradient(90deg, #0284c7, #2563eb);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    text-transform: uppercase;
+    box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
+  }
+
+  .hero-headline {
+    font-size: 21px;
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1.2;
+    margin-top: 8px;
+    letter-spacing: -0.3px;
+  }
+  .hero-headline span {
+    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.45;
+    margin-top: 6px;
+  }
+
+  /* FEATURE HIGHLIGHTS GRID */
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .f-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+  .f-head {
+    font-size: 10px;
+    font-weight: 800;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .f-txt {
+    font-size: 9px;
+    color: #cbd5e1;
+    margin-top: 2px;
+  }
+
+  /* BOTTOM STATUS ROW */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .badge-live {
+    background: #10b981;
+    color: #ffffff;
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    background: #ffffff;
+    border-radius: 50%;
+  }
+  .meta-txt {
+    font-size: 9.5px;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  /* RIGHT SIDE: BEAUTIFUL 3D DUAL-PHONE MOCKUPS */
+  .right-screens {
+    flex: 1.25;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    z-index: 2;
+    padding-right: 4px;
+  }
+
+  .device-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .device-title {
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #e2e8f0;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .smartphone {
+    width: 146px;
+    height: 324px; /* Exact 9:20 ratio */
+    background: #000000;
+    border-radius: 24px;
+    padding: 4px;
+    box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.8),
+                0 0 0 2px #334155,
+                0 0 15px rgba(56, 189, 248, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .screen-wrap {
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #ffffff;
+  }
+  .screen-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+  <div class="bg-glow"></div>
+
+  <!-- LEFT COLUMN: PITCH & HIGHLIGHTS -->
+  <div class="left-banner">
+    <div>
+      <div class="brand-pill">
+        <span>⚡ iTantra Native Client</span>
+      </div>
+
+      <div class="hero-headline">
+        Fully Functional<br>
+        <span>Tactical Voice App</span>
+      </div>
+
+      <div class="hero-sub">
+        Tested on physical hardware: converts continuous speech into tiny ~50B neural packets across local ad-hoc Wi-Fi and Bluetooth mesh.
+      </div>
+
+      <div class="features-grid">
+        <div class="f-card">
+          <div class="f-head">🎙️ PTT & Auto-VAD</div>
+          <div class="f-txt">Walkie-talkie & hands-free calling</div>
+        </div>
+        <div class="f-card">
+          <div class="f-head">🌐 3 Languages</div>
+          <div class="f-txt">Hindi, English & Tamil offline</div>
+        </div>
+        <div class="f-card">
+          <div class="f-head">🚨 SOS & Alert</div>
+          <div class="f-txt">Red SOS & Yellow hazard triage</div>
+        </div>
+        <div class="f-card">
+          <div class="f-head">🗣️ Piper Neural TTS</div>
+          <div class="f-txt">Instant voice playback feed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER META -->
+    <div class="status-row">
+      <div class="badge-live">
+        <div class="badge-dot"></div>
+        <span>Live Hardware Demo</span>
+      </div>
+      <div class="meta-txt">Smart India Hackathon 2026</div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN: DUAL HIGH-RES PHONE MOCKUPS -->
+  <div class="right-screens">
+    <!-- Transmitter -->
+    <div class="device-card">
+      <div class="device-title" style="color:#60a5fa;">PTT Transmitter</div>
+      <div class="smartphone">
+        <div class="screen-wrap">
+          <img src="file:///home/naman/Desktop/SIH/Backup/docs/assets/screen_ptt.png" alt="PTT Transmitter Screen">
+        </div>
+      </div>
+    </div>
+
+    <!-- Receiver -->
+    <div class="device-card">
+      <div class="device-title" style="color:#34d399;">In-Call Receiver</div>
+      <div class="smartphone">
+        <div class="screen-wrap">
+          <img src="file:///home/naman/Desktop/SIH/Backup/docs/assets/screen_incall.png" alt="In-Call Receiver Screen">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

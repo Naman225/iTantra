@@ -57,7 +57,7 @@ def run_dongle_monitor(port: int = 5005):
             print(f"  RF Metrics:   RSSI: -86 dBm | SNR: +10.2 dB | Freq: 865.200 MHz")
             print(f"  Language:     {pkt.lang_name} ({pkt.lang_code.upper()}) | Priority: {'SOS EMERGENCY' if pkt.is_emergency else 'ROUTINE'}")
             print(f"  Text Payload: \"{pkt.text}\"")
-            print(f"  Forwarding:   Relayed to long-range LoRa mesh (Estimated range: 12-15 km)")
+            print(f"  Forwarding:   Relayed to long-range LoRa mesh [Simulation Link Budget: SF7 BW125 -124dBm sensitivity]")
             print("-" * 75 + "\n")
     except KeyboardInterrupt:
         print("\n[GATEWAY] Radio stopped.")

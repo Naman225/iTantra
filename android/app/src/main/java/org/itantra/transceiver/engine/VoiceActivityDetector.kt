@@ -16,7 +16,8 @@ import kotlin.math.sqrt
 class VoiceActivityDetector(
     private val sampleRate: Int = 16000,
     private val silenceThresholdMillis: Long = 450L,
-    private val speechThresholdDb: Float = -36.0f
+    private val pcmDbfsThreshold: Float = -36.0f,
+    private val recognizerThresholdDb: Float = 2.5f // Android onRmsChanged scale (-2dB to +10dB)
 ) {
     companion object {
         const val TAG = "iTantra-VAD"
@@ -27,34 +28,46 @@ class VoiceActivityDetector(
     private var isSpeaking = false
     private var lastSpeechTime = 0L
     private var speechStartTime = 0L
+    private var adaptiveNoiseFloorDbfs = -55.0f
 
     var onSpeechStart: (() -> Unit)? = null
     var onSpeechPause: (() -> Unit)? = null
     var onRmsUpdate: ((Float) -> Unit)? = null
 
     /**
-     * Processes live audio level in dB (from AudioRecord or SpeechRecognizer onRmsChanged).
+     * Processes live audio level from SpeechRecognizer onRmsChanged (scale: -2dB to +10dB).
+     * Silence is typically -2dB to +0.5dB, speech is typically > 2.5dB.
      */
-    fun processRms(rmsdB: Float) {
+    fun processRecognizerRms(rmsdB: Float) {
         val normalized = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
         onRmsUpdate?.invoke(normalized)
 
-        val currentTime = System.currentTimeMillis()
-        val isVoiceActive = rmsdB > speechThresholdDb
+        val isVoiceActive = rmsdB > recognizerThresholdDb
+        handleVoiceState(isVoiceActive, "RecognizerRms ($rmsdB dB)")
+    }
 
+    /**
+     * Processes audio level for backward compatibility.
+     */
+    fun processRms(rmsdB: Float) {
+        processRecognizerRms(rmsdB)
+    }
+
+    private fun handleVoiceState(isVoiceActive: Boolean, sourceTag: String) {
+        val currentTime = System.currentTimeMillis()
         if (isVoiceActive) {
             lastSpeechTime = currentTime
             if (!isSpeaking) {
                 isSpeaking = true
                 speechStartTime = currentTime
-                Log.d(TAG, "Speech onset detected at $rmsdB dB")
+                Log.d(TAG, "Speech onset detected via $sourceTag")
                 mainHandler.post { onSpeechStart?.invoke() }
             }
         } else {
             if (isSpeaking && (currentTime - lastSpeechTime) >= silenceThresholdMillis) {
                 val utteranceDuration = currentTime - speechStartTime
                 if (utteranceDuration >= 300) {
-                    Log.d(TAG, "Speech pause/stop detected after ${utteranceDuration}ms utterance")
+                    Log.d(TAG, "Speech pause detected after ${utteranceDuration}ms utterance")
                     isSpeaking = false
                     mainHandler.post { onSpeechPause?.invoke() }
                 } else {
@@ -65,7 +78,7 @@ class VoiceActivityDetector(
     }
 
     /**
-     * Processes a buffer of 16-bit PCM audio samples directly.
+     * Processes a buffer of 16-bit PCM audio samples directly using dBFS scale (-90 dBFS to 0 dBFS).
      */
     fun processPcmBuffer(buffer: ShortArray, readSize: Int) {
         if (readSize <= 0) return
@@ -77,9 +90,19 @@ class VoiceActivityDetector(
         }
         val meanSquare = sumSquares / readSize
         val rms = sqrt(meanSquare)
-        val db = if (rms > 0) (20.0 * log10(rms / 32767.0)).toFloat() else -100.0f
+        val dbfs = if (rms > 0) (20.0 * log10(rms / 32767.0)).toFloat() else -90.0f
 
-        processRms(db)
+        val normalized = ((dbfs + 60f) / 60f).coerceIn(0f, 1f)
+        onRmsUpdate?.invoke(normalized)
+
+        // Adapt noise floor during silence
+        if (dbfs < pcmDbfsThreshold) {
+            adaptiveNoiseFloorDbfs = adaptiveNoiseFloorDbfs * 0.95f + dbfs * 0.05f
+        }
+        val dynamicThreshold = maxOf(pcmDbfsThreshold, adaptiveNoiseFloorDbfs + 10.0f)
+        val isVoiceActive = dbfs > dynamicThreshold
+
+        handleVoiceState(isVoiceActive, "PcmDbfs ($dbfs dBFS)")
     }
 
     fun reset() {

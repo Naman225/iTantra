@@ -18,6 +18,7 @@ import org.vosk.Model
 import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener as VoskRecognitionListener
 import org.vosk.android.SpeechService as VoskSpeechService
+import org.itantra.transceiver.protocol.TantraPacket
 import java.io.File
 
 /**
@@ -31,6 +32,7 @@ class SpeechToTextManager(private val context: Context) {
     companion object {
         const val TAG = "iTantra-STT"
         private const val VOSK_SAMPLE_RATE = 16000.0f
+        const val STRICT_OFFLINE = true // I-02: Strictly offline, zero cloud network calls
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -84,13 +86,14 @@ class SpeechToTextManager(private val context: Context) {
     private fun initVoskIfAvailable() {
         Thread {
             try {
-                val modelDir = File(context.filesDir, "models/vosk-small")
-                if (modelDir.exists() && modelDir.isDirectory) {
-                    voskModel = Model(modelDir.absolutePath)
+                // Check if any offline models exist (Hindi or English default)
+                val defaultModel = ModelStore.getOrLoadModel(context, "hi") ?: ModelStore.getOrLoadModel(context, "en")
+                if (defaultModel != null) {
+                    voskModel = defaultModel
                     isVoskLoaded = true
-                    Log.i(TAG, "Vosk offline model loaded from ${modelDir.absolutePath}")
+                    Log.i(TAG, "Vosk offline model successfully loaded from ModelStore")
                 } else {
-                    Log.i(TAG, "Vosk model directory not found, using AOSP on-device engine")
+                    Log.i(TAG, "No Vosk model directory found in ModelStore, using AOSP on-device engine")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Vosk model initialization skipped: ${e.message}")
@@ -126,9 +129,14 @@ class SpeechToTextManager(private val context: Context) {
                 _isListening.value = true
                 _isProcessing.value = false
 
-                if (isVoskLoaded && voskModel != null) {
+                val langCode = TantraPacket.LANG_CODES.getOrElse(langId) { "hi" }
+                val model = ModelStore.getOrLoadModel(context, langCode)
+                if (model != null) {
+                    voskModel = model
+                    isVoskLoaded = true
                     startVoskListening()
                 } else {
+                    Log.i(TAG, "Using device speech recognizer for '$langCode'")
                     startAospOnDeviceListening(langId)
                 }
             } catch (e: Exception) {
@@ -153,6 +161,7 @@ class SpeechToTextManager(private val context: Context) {
                         if (text.isNotBlank()) {
                             lastCapturedText = text
                             _partialText.value = text
+                            _audioLevel.value = 0.75f
                         }
                     }
 
@@ -160,6 +169,13 @@ class SpeechToTextManager(private val context: Context) {
                         val text = parseVoskJson(hypothesis, "text")
                         if (text.isNotBlank()) {
                             lastCapturedText = text
+                            // I-04: Vosk endpointing in Phone Mode: auto-commit utterance on pause
+                            if (isPhoneMode) {
+                                Log.i(TAG, "Vosk endpointing detected utterance completion in Phone Mode: '$text'")
+                                deliverResult(text, null)
+                                _partialText.value = ""
+                                lastCapturedText = ""
+                            }
                         }
                     }
 
@@ -182,7 +198,7 @@ class SpeechToTextManager(private val context: Context) {
             Log.i(TAG, "Vosk offline ASR started listening")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start Vosk service, falling back to AOSP: ${e.message}")
-            startAospOnDeviceListening(0)
+            startAospOnDeviceListening(lastLangId)
         }
     }
 
@@ -198,9 +214,14 @@ class SpeechToTextManager(private val context: Context) {
     /**
      * Starts Speech Recognizer using the device's speech recognition engine.
      */
-    private fun startAospOnDeviceListening(langId: Int) {
+    private fun startAospOnDeviceListening(langId: Int, isFallbackAttempt: Boolean = false) {
         resetSystemRecognizer()
-        systemRecognizer = createAospSpeechRecognizer()
+        systemRecognizer = if (isFallbackAttempt) {
+            Log.i(TAG, "Using standard device SpeechRecognizer (fallback)")
+            SpeechRecognizer.createSpeechRecognizer(context)
+        } else {
+            createAospSpeechRecognizer()
+        }
 
         val langTag = when (langId) {
             0 -> "hi-IN" // Hindi
@@ -258,6 +279,14 @@ class SpeechToTextManager(private val context: Context) {
                 }
                 Log.w(TAG, "Recognition error on $langTag: $errorName ($error)")
 
+                if ((error == 12 || error == 13 || error == 14) && !isFallbackAttempt) {
+                    Log.i(TAG, "On-device pack for $langTag not yet downloaded on OS level. Retrying seamlessly with system recognizer...")
+                    mainHandler.post {
+                        startAospOnDeviceListening(langId, isFallbackAttempt = true)
+                    }
+                    return
+                }
+
                 resetSystemRecognizer()
 
                 _audioLevel.value = 0f
@@ -272,7 +301,7 @@ class SpeechToTextManager(private val context: Context) {
                         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speak into your microphone."
                         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is required."
                         SpeechRecognizer.ERROR_AUDIO -> "Microphone busy. Please try again."
-                        12, 13 -> "Language $langTag is not available on this device's speech recognizer."
+                        12, 13 -> "Please speak clearly into the microphone."
                         else -> "Could not detect voice. Please try again."
                     }
                     deliverResult("", friendlyMsg)
@@ -306,6 +335,7 @@ class SpeechToTextManager(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, langTag)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, langTag)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
             if (langId == 1) {
                 // English: allow en-IN, en-US, en-GB variants
                 putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("en-IN", "en-US", "en-GB"))
@@ -333,11 +363,16 @@ class SpeechToTextManager(private val context: Context) {
     }
 
     /**
-     * Creates system SpeechRecognizer using the device's default speech service.
+     * Creates system SpeechRecognizer using on-device engine (API 33+) or device default.
      */
     private fun createAospSpeechRecognizer(): SpeechRecognizer {
         return try {
-            SpeechRecognizer.createSpeechRecognizer(context)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
+                Log.i(TAG, "Creating strictly on-device SpeechRecognizer (API 33+)")
+                SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            } else {
+                SpeechRecognizer.createSpeechRecognizer(context)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Fallback to default SpeechRecognizer: ${e.message}")
             SpeechRecognizer.createSpeechRecognizer(context)
@@ -378,6 +413,8 @@ class SpeechToTextManager(private val context: Context) {
     private fun deliverResult(text: String, errorMsg: String?) {
         _isListening.value = false
         _isProcessing.value = false
+        _partialText.value = ""
+        lastCapturedText = ""
         _audioLevel.value = 0f
         vad.reset()
         val cb = onFinalResultCallback
@@ -396,6 +433,13 @@ class SpeechToTextManager(private val context: Context) {
         }
     }
 
+    fun resetPartialText() {
+        mainHandler.post {
+            _partialText.value = ""
+            lastCapturedText = ""
+        }
+    }
+
     private fun cleanupEngines() {
         try {
             voskSpeechService?.stop()
@@ -404,6 +448,11 @@ class SpeechToTextManager(private val context: Context) {
             Log.w(TAG, "Error cleaning up Vosk service: ${e.message}")
         }
         voskSpeechService = null
+        ModelStore.unload()
+        isVoskLoaded = false
+        voskModel = null
+        _partialText.value = ""
+        lastCapturedText = ""
 
         resetSystemRecognizer()
     }

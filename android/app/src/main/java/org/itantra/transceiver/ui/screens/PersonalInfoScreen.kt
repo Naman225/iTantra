@@ -55,7 +55,7 @@ fun PersonalInfoScreen(
 
     // Loaded profile values
     var name by remember { mutableStateOf(prefs.getString("name", "Naman Tiwari") ?: "Naman Tiwari") }
-    var phone by remember { mutableStateOf(prefs.getString("phone", "9205917214") ?: "9205917214") }
+    var phone by remember { mutableStateOf(prefs.getString("phone", "XXXXXXXXXX") ?: "XXXXXXXXXX") }
     var dob by remember { mutableStateOf(prefs.getString("dob", "15/08/2002") ?: "15/08/2002") }
     val radioId = remember { prefs.getString("radio_id", "ITANTRA-7249") ?: "ITANTRA-7249" }
     var hasPhoto by remember { mutableStateOf(prefs.getBoolean("has_photo", false)) }

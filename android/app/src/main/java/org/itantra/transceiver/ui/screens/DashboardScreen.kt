@@ -1,6 +1,7 @@
 package org.itantra.transceiver.ui.screens
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -301,7 +302,12 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(42.dp)
@@ -318,7 +324,7 @@ fun DashboardScreen(
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Nearby Radios",
                                 fontSize = 15.sp,
@@ -337,16 +343,42 @@ fun DashboardScreen(
                         }
                     }
 
+                    var isScanning by remember { mutableStateOf(false) }
+
+                    if (isScanning) {
+                        LaunchedEffect(Unit) {
+                            kotlinx.coroutines.delay(2000)
+                            isScanning = false
+                        }
+                    }
+
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            isScanning = true
                             onSendPing()
+                            Toast.makeText(context, "📡 Scanning airlink for nearby iTantra radios...", Toast.LENGTH_SHORT).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                         shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.defaultMinSize(minWidth = 72.dp)
                     ) {
-                        Text("Scan", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        if (isScanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = if (isScanning) "Scanning" else "Scan",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
 

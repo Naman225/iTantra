@@ -23,6 +23,7 @@ class TextToSpeechManager(
 
     private var tts: TextToSpeech? = null
     private var isInitialized = false
+    val neuralEngine = NeuralTtsEngine(context)
 
     private val LOCALE_MAP = mapOf(
         "hi" to Locale("hi", "IN"),
@@ -55,6 +56,8 @@ class TextToSpeechManager(
 
     /**
      * Speaks text with language selection and emergency alarm override.
+     * Primary: Piper/VITS ONNX Neural voice (I-03).
+     * Fallback: Labeled 100% on-device offline system voice.
      */
     fun speak(
         text: String,
@@ -62,6 +65,14 @@ class TextToSpeechManager(
         isEmergency: Boolean = false,
         onDone: (() -> Unit)? = null
     ) {
+        // Attempt Primary Engine: On-Device Neural ONNX (Piper)
+        val handledByNeural = neuralEngine.speak(text, langCode, isEmergency, onDone)
+        if (handledByNeural) {
+            Log.i(TAG, "Synthesized via Primary Neural Engine (Piper ONNX)")
+            return
+        }
+
+        // Secondary Engine: Labeled On-Device Offline TTS Fallback
         if (!isInitialized || tts == null) {
             Log.w(TAG, "TTS not ready yet")
             return
@@ -129,6 +140,7 @@ class TextToSpeechManager(
     }
 
     fun shutdown() {
+        neuralEngine.shutdown()
         tts?.stop()
         tts?.shutdown()
         tts = null

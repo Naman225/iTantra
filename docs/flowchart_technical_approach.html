@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    width: 1400px;
+    height: 480px;
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10px 20px 10px;
+    overflow: hidden;
+  }
+
+  /* TOP SECTION TITLE / BADGE ROW */
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+  .system-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 17px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .system-title span {
+    color: #2563eb;
+  }
+  .system-badge {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .metrics-badge-row {
+    display: flex;
+    gap: 12px;
+  }
+  .pill-metric {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 6px;
+  }
+  .pill-green {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+  }
+  .pill-amber {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+  }
+
+  /* FLOW DIAGRAM CONTAINER */
+  .flow-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    flex: 1;
+    position: relative;
+    gap: 12px;
+  }
+
+  /* FLOW STEP CARD */
+  .step-node {
+    flex: 1;
+    background: #ffffff;
+    border: 2px solid #cbd5e1;
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    min-height: 290px;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .step-node.active-tx {
+    border-color: #3b82f6;
+    background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+  }
+  .step-node.active-packet {
+    border-color: #8b5cf6;
+    background: linear-gradient(180deg, #fdf4ff 0%, #f5f3ff 100%);
+  }
+  .step-node.active-bearer {
+    border-color: #0284c7;
+    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+  }
+  .step-node.active-rx {
+    border-color: #10b981;
+    background: linear-gradient(180deg, #f8fafc 0%, #ecfdf5 100%);
+  }
+
+  .step-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1.5px solid rgba(0,0,0,0.06);
+    padding-bottom: 6px;
+  }
+  .step-number {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .num-blue { background: #2563eb; }
+  .num-purple { background: #7c3aed; }
+  .num-cyan { background: #0284c7; }
+  .num-green { background: #059669; }
+
+  .step-title-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+  .step-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+  }
+  .step-role {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* LIST ITEMS IN CARD */
+  .node-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    margin-top: 4px;
+  }
+  .feature-box {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 8px;
+    padding: 6px 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+  .f-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .f-desc {
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+  .tag-highlight {
+    font-weight: 700;
+    color: #2563eb;
+  }
+
+  /* CONNECTOR ARROWS */
+  .arrow-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    color: #3b82f6;
+    font-size: 22px;
+    font-weight: 900;
+    user-select: none;
+  }
+  .arrow-label {
+    font-size: 8.5px;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: -2px;
+  }
+
+  /* FOOTER HIGHLIGHT ROW */
+  .footer-specs {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f1f5f9;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 6px 16px;
+    margin-top: 10px;
+  }
+  .spec-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #334155;
+  }
+  .spec-item strong {
+    color: #0f172a;
+    font-weight: 800;
+  }
+  .spec-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dot-red { background: #ef4444; }
+  .dot-yellow { background: #f59e0b; }
+  .dot-green { background: #10b981; }
+</style>
+</head>
+<body>
+
+  <!-- HEADER ROW -->
+  <div class="header-bar">
+    <div class="system-title">
+      <span>End-to-End Execution Flow:</span> iTantra Neural Transceiver Pipeline
+    </div>
+    <div class="system-badge">100% OFFLINE • ZERO-INTERNET AD-HOC MESH</div>
+    <div class="metrics-badge-row">
+      <div class="pill-metric pill-green">⚡ Latency: 0.69 – 0.96s</div>
+      <div class="pill-metric pill-amber">📦 99.92% Bandwidth Reduction</div>
+    </div>
+  </div>
+
+  <!-- FLOWCHART NODES -->
+  <div class="flow-container">
+
+    <!-- STEP 1 -->
+    <div class="step-node active-tx">
+      <div class="step-head">
+        <div class="step-number num-blue">1</div>
+        <div class="step-title-wrap">
+          <div class="step-title">Voice Ingestion & STT</div>
+          <div class="step-role">Transmitter Edge Node</div>
+        </div>
+      </div>
+      <div class="node-content">
+        <div class="feature-box">
+          <div class="f-label">🎙️ Audio Ingestion</div>
+          <div class="f-desc">Dual Mode: PTT (Push-to-Talk) or Hands-Free VAD (Voice Activity Detection).</div>
+        </div>
+        <div class="feature-box">
+          <div class="f-label">🧠 Edge Vosk Engine</div>
+          <div class="f-desc">Kaldi-based on-device speech recognition without cloud APIs.</div>
+        </div>
+        <div class="feature-box">
+          <div class="f-label">🌐 Multilingual Lexicon</div>
+          <div class="f-desc">Immediate phoneme mapping for <span class="tag-highlight">Hindi, English & Tamil</span>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARROW 1 -->
+    <div class="arrow-connector">
+      <span>➔</span>
+      <div class="arrow-label">Text</div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step-node active-packet">
+      <div class="step-head">
+        <div class="step-number num-purple">2</div>
+        <div class="step-title-wrap">
+          <div class="step-title">TantraPacket Struct</div>
+          <div class="step-role">Neural Frame Compression</div>
+        </div>
+      </div>
+      <div class="node-content">
+        <div class="feature-box">
+          <div class="f-label">🚨 Priority Classifier</div>
+          <div class="f-desc">Autonomous classification into <span style="color:#ef4444;font-weight:700;">SOS Red</span>, <span style="color:#d97706;font-weight:700;">Alert Yellow</span>, or <span style="color:#059669;font-weight:700;">Normal</span>.</div>
+        </div>
+        <div class="feature-box">
+          <div class="f-label">📦 Binary Serialization</div>
+          <div class="f-desc">Header (Sync, Lang ID, Priority, Seq No, CRC-16) + UTF-8 compressed text.</div>
+        </div>
+        <div class="feature-box">
+          <div class="f-label">📉 50–106 Byte Frame</div>
+          <div class="f-desc">Transforms 64 kbps heavy voice stream into ~132 bps microscopic payload.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARROW 2 -->
+    <div class="arrow-connector">
+      <span>➔</span>
+      <div class="arrow-label">Frame</div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step-node active-bearer">
+      <div class="step-head">
+        <div class="step-number num-cyan">3</div>
+        <div class="step-title-wrap">
+          <div class="step-title">Multi-Bearer Radio P2P</div>
+          <div class="step-role">Ad-Hoc Wireless Transport</div>
+        </div>
+      </div>
+      <div class="node-content">
+        <div class="feature-box">
+          <div class="f-label">📶 Wi-Fi Hotspot / Direct</div>
+          <div class="f-desc">UDP peer-to-peer broadcast on port 8888 for field command posts.</div>
+        </div>
+        <div class="feature-box">
+          <div class="f-label">⚡ Bluetooth RFCOMM</div>
+          <div class="f-desc">SPP serial socket link for phone-to-phone short-range comms.</div>
+        </div>
+        <div class="feature-box">
+          <div class="f-label">📡 Sub-GHz LoRa / VHF</div>
+          <div class="f-desc">Transmits binary frames over 10–15 km tactical links (SX1262 / SX1276).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARROW 3 -->
+    <div class="arrow-connector">
+      <span>➔</span>
+      <div class="arrow-label">Radio</div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step-node active-rx">
+      <div class="step-head">
+        <div class="step-number num-green">4</div>
+        <div class="step-title-wrap">
+          <div class="step-title">Neural Voice Synthesis</div>
+          <div class="step-role">Receiver Node Playback</div>
+        </div>
+      </div>
+      <div class="node-content">
+        <div class="feature-box">
+          <div class="f-label">🛡️ CRC Validation</div>
+          <div class="f-desc">Frame integrity check, sequence deduplication & SOS alarm override.</div>
+        </div>
+        <div class="feature-box">
+          <div class="f-label">🔊 Piper ONNX / TTS</div>
+          <div class="f-desc">Reconstructs natural spoken voice instantly in the sender's language.</div>
+        </div>
+        <div class="feature-box">
+          <div class="f-label">📱 Hands-Free Feed</div>
+          <div class="f-desc">Live activity timeline displays transcript + plays real-time audio out loud.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER TECHNICAL SPECS -->
+  <div class="footer-specs">
+    <div class="spec-item">
+      <div class="spec-dot dot-red"></div>
+      <div><strong>SOS Override:</strong> High-priority 65B distress beacon with alarm buzzer</div>
+    </div>
+    <div class="spec-item">
+      <div class="spec-dot dot-yellow"></div>
+      <div><strong>Alert Classification:</strong> Automatic trigger on hazard keywords ("khatra", "danger")</div>
+    </div>
+    <div class="spec-item">
+      <div class="spec-dot dot-green"></div>
+      <div><strong>Offline Resilience:</strong> Zero cellular or telecom dependence during disaster</div>
+    </div>
+  </div>
+
+</body>
+</html>

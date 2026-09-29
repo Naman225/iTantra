@@ -153,10 +153,10 @@ fun ContactUsScreen(
                 iconTint = AccentGreen,
                 iconBackground = AccentGreen.copy(alpha = 0.12f),
                 label = "Phone Number",
-                value = "9205917214",
+                value = "XXXXXXXXXX",
                 hint = "Tap to call or dial",
                 onClick = {
-                    openPhone(context, "9205917214")
+                    openPhone(context, "XXXXXXXXXX")
                 }
             )
 

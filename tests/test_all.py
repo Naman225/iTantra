@@ -73,6 +73,28 @@ class TestTantraProtocol(unittest.TestCase):
         with self.assertRaises(ValueError):
             TantraPacket.decode(bytes(encoded))
 
+    def test_hmac_authentication_and_tamper_rejection(self):
+        text = "Confidential NDRF evacuation order"
+        pkt = TantraPacket(text=text, lang_id=1, is_emergency=True, seq_num=505, node_id=1042)
+        auth_bytes = pkt.encode(enable_auth=True)
+
+        # Authenticated packet decodes cleanly
+        decoded = TantraPacket.decode(auth_bytes)
+        self.assertEqual(decoded.text, text)
+        self.assertEqual(decoded.node_id, 1042)
+        self.assertEqual(decoded.seq_num, 505)
+        self.assertTrue(decoded.is_emergency)
+
+        # Tamper test: Flip 1 bit in payload
+        corrupted = bytearray(auth_bytes)
+        corrupted[10] ^= 0x01
+        with self.assertRaises((PermissionError, ValueError)):
+            TantraPacket.decode(bytes(corrupted))
+
+        # Spoofing test: Wrong secret key rejects
+        with self.assertRaises((PermissionError, ValueError)):
+            TantraPacket.decode(auth_bytes, key=b"Wrong-Attack-Key-99999999999999")
+
     def test_auto_lid_script_detection(self):
         self.assertEqual(detect_language_from_text("Flash flood alert evacuate immediately"), "en")
         self.assertEqual(detect_language_from_text("बाढ़ का पानी पुल तक आ गया है"), "hi")

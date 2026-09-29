@@ -76,7 +76,8 @@ class MainActivity : ComponentActivity() {
 
     // 3-Second Life Safety SOS State Machine (I-06)
     val sosCountdownState = kotlinx.coroutines.flow.MutableStateFlow<Pair<TantraPacket, Int>?>(null)
-    private var activeSosJob: kotlinx.coroutines.Job? = null    private var activeSosCallback: ((TantraPacket) -> Unit)? = null
+    private var activeSosJob: kotlinx.coroutines.Job? = null
+    private var activeSosCallback: ((TantraPacket) -> Unit)? = null
 
     private fun nextSeqNum(): Int {
         val next = sequenceCounter.getAndIncrement()
@@ -394,8 +395,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (intent?.getStringExtra("action") == "dismiss_sos") {
+            alertManager.stopDistressVibration()
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getStringExtra("action") == "dismiss_sos") {
+            alertManager.stopDistressVibration()
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        alertManager.stopDistressVibration()
         try {
             RadioService.stop(this)
             btServerManager?.stopListening()
@@ -439,6 +456,9 @@ fun ITantraApp(
                 isEmergency = packet.isEmergency,
                 isAlert = packet.isAlert
             )
+            if (packet.isEmergency) {
+                alertManager.startContinuousDistressVibration()
+            }
         }
     }
 

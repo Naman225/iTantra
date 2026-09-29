@@ -119,20 +119,11 @@ class TextToSpeechManager(
             }
         }
 
-        if (isEmergency) {
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build()
-            tts?.setAudioAttributes(audioAttributes)
-            params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_ALARM)
-        } else {
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build()
-            tts?.setAudioAttributes(audioAttributes)
-        }
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build()
+        tts?.setAudioAttributes(audioAttributes)
 
         // Emergency alerts play with QUEUE_FLUSH (immediate override)
         val queueMode = if (isEmergency) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD

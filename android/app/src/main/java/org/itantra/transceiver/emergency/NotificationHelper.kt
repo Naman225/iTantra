@@ -5,8 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import org.itantra.transceiver.MainActivity
@@ -16,7 +14,7 @@ class NotificationHelper(private val context: Context) {
     companion object {
         const val CHANNEL_MESSAGES = "itantra_messages"
         const val CHANNEL_ALERT = "itantra_alert"
-        const val CHANNEL_EMERGENCY = "itantra_emergency"
+        const val CHANNEL_EMERGENCY = "itantra_emergency_v2"
         const val NOTIF_ID_MESSAGE = 1001
         const val NOTIF_ID_ALERT = 5001
         const val NOTIF_ID_EMERGENCY = 9999
@@ -31,6 +29,11 @@ class NotificationHelper(private val context: Context) {
 
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Delete legacy channel that may have cached alarm sound
+            try {
+                notificationManager.deleteNotificationChannel("itantra_emergency")
+            } catch (_: Exception) {}
+
             // Channel 1: Normal Transceiver Messages (Green tier)
             val messageChannel = NotificationChannel(
                 CHANNEL_MESSAGES,
@@ -55,22 +58,16 @@ class NotificationHelper(private val context: Context) {
                 enableLights(true)
             }
 
-            // Channel 3: Emergency SOS Alerts (Red tier - High Priority with Alarm sound)
-            val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            val audioAttributes = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .build()
-
+            // Channel 3: Emergency SOS Alerts (Tactical Vibration Only - NO Alarm Sound / Voice)
             val emergencyChannel = NotificationChannel(
                 CHANNEL_EMERGENCY,
-                "Emergency SOS Distress (Red)",
+                "Emergency SOS Distress (Vibrate Only)",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Critical life-safety distress broadcasts"
+                description = "Critical life-safety distress broadcasts (Tactical Vibration)"
                 enableVibration(true)
-                vibrationPattern = longArrayOf(0, 300, 150, 300, 150, 600)
-                setSound(alarmSound, audioAttributes)
+                vibrationPattern = longArrayOf(0, 500, 100, 500, 100, 800, 300)
+                setSound(null, null) // Pure vibration only, NO alarm sound or voice
                 lightColor = 0xFFEA4335.toInt()
                 enableLights(true)
             }
@@ -89,10 +86,11 @@ class NotificationHelper(private val context: Context) {
     ) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("action", if (isEmergency) "dismiss_sos" else "open")
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            0,
+            if (isEmergency) NOTIF_ID_EMERGENCY else 0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -131,8 +129,27 @@ class NotificationHelper(private val context: Context) {
             .setAutoCancel(true)
 
         if (isEmergency) {
-            builder.setCategory(NotificationCompat.CATEGORY_ALARM)
+            builder.setCategory(NotificationCompat.CATEGORY_MESSAGE)
             builder.setColor(0xFFEA4335.toInt())
+            builder.setSound(null)
+            builder.setVibrate(longArrayOf(0, 500, 100, 500, 100, 800, 300))
+
+            // Action button to acknowledge & stop continuous vibration directly
+            val ackIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("action", "dismiss_sos")
+            }
+            val ackPendingIntent = PendingIntent.getActivity(
+                context,
+                NOTIF_ID_EMERGENCY + 1,
+                ackIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Acknowledge & Silence",
+                ackPendingIntent
+            )
         } else if (isAlert) {
             builder.setCategory(NotificationCompat.CATEGORY_EVENT)
             builder.setColor(0xFFF59E0B.toInt())

@@ -27,25 +27,62 @@ class EmergencyAlertManager(private val context: Context) {
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
 
+    private var isVibrating = false
+
     /**
-     * Enforces maximum alarm volume for life-safety distress broadcasts.
+     * Enforces silent operation as requested: Alarm volume override is disabled.
      */
     fun overrideVolumeToMax() {
+        // Disabled: do NOT force alarm volume to max (sound-free tactical mode)
+        Log.d(TAG, "overrideVolumeToMax skipped - tactical vibration-only mode")
+    }
+
+    /**
+     * Triggers heavy, continuous tactical vibration that repeats indefinitely
+     * until the emergency message is read or acknowledged.
+     */
+    @Synchronized
+    fun startContinuousDistressVibration() {
+        if (isVibrating) return
+        isVibrating = true
         try {
-            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
-            audioManager.setStreamVolume(
-                AudioManager.STREAM_ALARM,
-                maxVolume,
-                AudioManager.FLAG_SHOW_UI
-            )
-            Log.w(TAG, "EMERGENCY: Device alarm volume forced to MAX ($maxVolume)")
+            // Intense tactical vibration pattern: 500ms on, 100ms off, 500ms on, 100ms off, 800ms on, 300ms pause
+            val timings = longArrayOf(0, 500, 100, 500, 100, 800, 300)
+            val amplitudes = intArrayOf(0, 255, 0, 255, 0, 255, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // repeat index 0 loops indefinitely
+                val effect = VibrationEffect.createWaveform(timings, amplitudes, 0)
+                vibrator.vibrate(effect)
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(timings, 0)
+            }
+            Log.w(TAG, "EMERGENCY: Started continuous heavy distress vibration")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to override volume: ${e.message}")
+            Log.e(TAG, "Continuous vibration failed: ${e.message}")
         }
     }
 
     /**
-     * Triggers tactical pulsing distress vibration pattern.
+     * Stops the continuous distress vibration immediately.
+     * Called when the operator acknowledges or reads the SOS message.
+     */
+    @Synchronized
+    fun stopDistressVibration() {
+        if (!isVibrating) return
+        isVibrating = false
+        try {
+            vibrator.cancel()
+            Log.i(TAG, "EMERGENCY: Distress vibration stopped (acknowledged/read)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to cancel vibration: ${e.message}")
+        }
+    }
+
+    fun isDistressVibrating(): Boolean = isVibrating
+
+    /**
+     * Triggers one-shot tactical pulsing distress vibration pattern (for yellow tactical warnings).
      */
     fun triggerDistressVibration() {
         try {

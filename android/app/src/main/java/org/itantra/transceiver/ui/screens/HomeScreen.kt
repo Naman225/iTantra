@@ -84,6 +84,7 @@ fun HomeScreen(
     var isPhoneCallMode by remember { mutableStateOf(false) }
     var isCallActive by remember { mutableStateOf(false) }
     var isCallMuted by remember { mutableStateOf(false) }
+    var activeSosPacket by remember { mutableStateOf<TantraPacket?>(null) }
 
     val partialText by sttManager.partialText.collectAsState()
     val audioLevel by sttManager.audioLevel.collectAsState()
@@ -119,9 +120,9 @@ fun HomeScreen(
             }
 
             if (packet.isEmergency) {
-                alertManager.overrideVolumeToMax()
-                alertManager.triggerDistressVibration()
-                ttsManager.speak(spokenText, targetLangCode, isEmergency = true)
+                // User requirement: pure heavy continuous vibration ONLY, no alarm voice/sound until read
+                activeSosPacket = packet
+                alertManager.startContinuousDistressVibration()
             } else if (packet.isAlert) {
                 alertManager.triggerDistressVibration()
                 ttsManager.speak("Warning: " + spokenText, targetLangCode, isEmergency = false)
@@ -254,6 +255,80 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        // High-Priority Tactical Distress Banner (continuous vibration active until acknowledged/read)
+        if (activeSosPacket != null) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        alertManager.stopDistressVibration()
+                        activeSosPacket = null
+                    },
+                colors = CardDefaults.cardColors(containerColor = SOSRed),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "🚨 SOS DISTRESS RECEIVED",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = "\"${activeSosPacket?.text}\"",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = "Tactical heavy vibration active • Tap to acknowledge",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            alertManager.stopDistressVibration()
+                            activeSosPacket = null
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = SOSRed
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Acknowledge",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         // Operating Mode Toggle Bar: Walkie-Talkie (PTT) vs Phone Call (Hands-Free VAD)
         Card(
@@ -788,7 +863,12 @@ fun HomeScreen(
                         horizontalArrangement = if (isOutgoing) Arrangement.End else Arrangement.Start
                     ) {
                         Card(
-                            modifier = Modifier.widthIn(max = 290.dp),
+                            modifier = Modifier
+                                .widthIn(max = 290.dp)
+                                .clickable {
+                                    alertManager.stopDistressVibration()
+                                    activeSosPacket = null
+                                },
                             colors = CardDefaults.cardColors(
                                 containerColor = when {
                                     item.packet.isEmergency -> Color(0xFFFEE2E2) // Red SOS tint

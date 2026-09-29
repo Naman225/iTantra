@@ -153,6 +153,8 @@ class SpeechToTextManager(private val context: Context) {
      */
     private fun startVoskListening() {
         try {
+            resetVoskService()
+            resetSystemRecognizer()
             val recognizer = Recognizer(voskModel, VOSK_SAMPLE_RATE)
             voskSpeechService = VoskSpeechService(recognizer, VOSK_SAMPLE_RATE).apply {
                 startListening(object : VoskRecognitionListener {
@@ -215,6 +217,7 @@ class SpeechToTextManager(private val context: Context) {
      * Starts Speech Recognizer using the device's speech recognition engine.
      */
     private fun startAospOnDeviceListening(langId: Int, isFallbackAttempt: Boolean = false) {
+        resetVoskService()
         resetSystemRecognizer()
         systemRecognizer = if (isFallbackAttempt) {
             Log.i(TAG, "Using standard device SpeechRecognizer (fallback)")
@@ -363,6 +366,19 @@ class SpeechToTextManager(private val context: Context) {
     }
 
     /**
+     * Safely stops and shuts down Vosk SpeechService instance to prevent leaked instances.
+     */
+    private fun resetVoskService() {
+        try {
+            voskSpeechService?.stop()
+            voskSpeechService?.shutdown()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error shutting down Vosk speech service: ${e.message}")
+        }
+        voskSpeechService = null
+    }
+
+    /**
      * Creates system SpeechRecognizer using on-device engine (API 33+) or device default.
      */
     private fun createAospSpeechRecognizer(): SpeechRecognizer {
@@ -411,6 +427,8 @@ class SpeechToTextManager(private val context: Context) {
     }
 
     private fun deliverResult(text: String, errorMsg: String?) {
+        resetVoskService()
+        resetSystemRecognizer()
         _isListening.value = false
         _isProcessing.value = false
         _partialText.value = ""

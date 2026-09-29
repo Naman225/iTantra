@@ -34,7 +34,8 @@ class NeuralTtsEngine(private val context: Context) {
 
     /**
      * Attempts neural synthesis of text in target language.
-     * Returns true if synthesized and played via Neural ONNX pipeline, false if fallback needed.
+     * Note: Standalone Piper ONNX runtime JNI bindings are under active integration for v1.1.
+     * Always hands off to the device offline TTS engine to ensure voice is never silenced.
      */
     fun speak(
         text: String,
@@ -42,20 +43,8 @@ class NeuralTtsEngine(private val context: Context) {
         isEmergency: Boolean,
         onComplete: (() -> Unit)? = null
     ): Boolean {
-        if (!isNeuralModelInstalled(langCode)) {
-            Log.d(TAG, "No local ONNX model installed for '$langCode'. Handing off to labeled offline system fallback.")
-            return false
-        }
-
-        scope.launch {
-            try {
-                Log.i(TAG, "Synthesizing via Neural ONNX Voice Engine for [$langCode]: '$text'")
-                onComplete?.invoke()
-            } catch (e: Exception) {
-                Log.w(TAG, "Neural synthesis exception: ${e.message}, falling back to system")
-            }
-        }
-        return true
+        // Hand off to device offline speech synthesis to guarantee voice playback
+        return false
     }
 
     fun shutdown() {

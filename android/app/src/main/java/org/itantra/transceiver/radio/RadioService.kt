@@ -55,9 +55,21 @@ class RadioService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification("Radio Active", "Listening on offline mesh..."))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification("Radio Active", "Listening on offline mesh..."),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, buildNotification("Radio Active", "Listening on offline mesh..."))
+            }
+            Log.i(TAG, "RadioService started in foreground")
+        } catch (e: Exception) {
+            Log.w(TAG, "startForeground deferred or failed: ${e.message}")
+        }
         acquireLocks()
-        Log.i(TAG, "RadioService started in foreground")
     }
 
     private fun acquireLocks() {

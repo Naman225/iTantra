@@ -22,8 +22,16 @@ from core_engine.protocol.tantra_packet import (
     FLAG_ALERT_EMERGENCY,
     FLAG_PTT_MODE
 )
-from core_engine.stt.stt_engine import VoskOfflineSTT
-from core_engine.tts.tts_engine import PiperOfflineTTS
+
+try:
+    from core_engine.stt.stt_engine import VoskOfflineSTT
+    from core_engine.tts.tts_engine import PiperOfflineTTS
+    HAS_SPEECH_ENGINES = True
+except ImportError:
+    HAS_SPEECH_ENGINES = False
+    VoskOfflineSTT = None
+    PiperOfflineTTS = None
+
 from core_engine.virtual_transceiver import VirtualReceiverNode, VirtualTransmitterNode
 
 
@@ -110,6 +118,7 @@ class TestTantraProtocol(unittest.TestCase):
         self.assertLess(telemetry["effective_bps"], 300.0)
 
 
+@unittest.skipIf(not HAS_SPEECH_ENGINES, "Vosk/Piper offline speech libraries not installed in this environment")
 class TestSpeechEngines(unittest.TestCase):
     """Integration tests for offline STT and TTS engines."""
 

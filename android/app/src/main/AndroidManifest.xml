@@ -51,7 +51,7 @@
             android:name=".radio.RadioService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="microphone|connectedDevice" />
+            android:foregroundServiceType="connectedDevice" />
 
         <activity
             android:name=".MainActivity"

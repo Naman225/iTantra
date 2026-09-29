@@ -64,13 +64,13 @@ class VoiceActivityDetector:
         Returns True if speech is currently active.
         Triggers on_speech_end(audio_bytes, duration_sec) when a natural pause/stop is detected.
         """
-        self.buffered_audio.extend(pcm_chunk)
         chunk_db = self.calculate_frame_energy(pcm_chunk)
         frame_ms = (len(pcm_chunk) // 2) * 1000 // self.sample_rate
 
         is_voice = chunk_db > self.energy_threshold_db
 
         if is_voice:
+            self.buffered_audio.extend(pcm_chunk)
             self.consecutive_silence_ms = 0
             self.speech_duration_ms += frame_ms
 
@@ -80,6 +80,7 @@ class VoiceActivityDetector:
                     on_speech_start()
         else:
             if self.is_speech_active:
+                self.buffered_audio.extend(pcm_chunk)
                 self.consecutive_silence_ms += frame_ms
 
                 # Natural speech pause / stop detected
@@ -95,6 +96,12 @@ class VoiceActivityDetector:
                     self.consecutive_silence_ms = 0
                     self.speech_duration_ms = 0
                     self.buffered_audio.clear()
+            else:
+                # Bounded pre-roll buffer (max 200 ms) so silence doesn't accumulate unbounded
+                max_preroll = int(self.sample_rate * 2 * 0.2)
+                self.buffered_audio.extend(pcm_chunk)
+                if len(self.buffered_audio) > max_preroll:
+                    self.buffered_audio = bytearray(self.buffered_audio[-max_preroll:])
 
         return self.is_speech_active
 

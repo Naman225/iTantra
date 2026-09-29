@@ -292,11 +292,15 @@ class BluetoothTransceiver(context: Context? = null) {
                     break
                 }
 
+                val flags = headerBuffer[1].toInt() and 0xFF
+                val isAuth = (flags and (TantraPacket.FLAG_AUTH_HMAC.toInt() and 0xFF)) != 0
+
                 // Extract payload length at bytes 4-5 (Big Endian Short)
                 val payloadLen = ((headerBuffer[4].toInt() and 0xFF) shl 8) or (headerBuffer[5].toInt() and 0xFF)
 
-                // Read payloadLen bytes + 2 bytes CRC-16
-                val remainingLen = payloadLen + 2
+                // Read remaining bytes: if HMAC auth enabled: 2 (nodeId) + payloadLen + 8 (HMAC) + 2 (CRC)
+                // If unauthenticated: payloadLen + 2 (CRC)
+                val remainingLen = if (isAuth) (2 + payloadLen + 8 + 2) else (payloadLen + 2)
                 val remainingBuffer = ByteArray(remainingLen)
                 if (!readFully(inputStream, remainingBuffer, 0, remainingLen)) {
                     Log.w(TAG, "Connection closed while reading payload and CRC")

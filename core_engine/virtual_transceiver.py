@@ -29,8 +29,12 @@ from core_engine.protocol.tantra_packet import (
     LANG_CODE_TO_ID,
     detect_language_from_text
 )
-from core_engine.stt.stt_engine import VoskOfflineSTT
-from core_engine.tts.tts_engine import PiperOfflineTTS
+try:
+    from core_engine.stt.stt_engine import VoskOfflineSTT
+    from core_engine.tts.tts_engine import PiperOfflineTTS
+except ImportError:
+    VoskOfflineSTT = None
+    PiperOfflineTTS = None
 
 DEFAULT_PORT = 5005
 
@@ -40,7 +44,7 @@ class VirtualReceiverNode:
         self.port = port
         self.running = False
         self.sock = None
-        self.tts = PiperOfflineTTS(default_lang="hi")
+        self.tts = PiperOfflineTTS(default_lang="hi") if PiperOfflineTTS is not None else None
         self.received_messages = []
 
     def start(self):
@@ -77,15 +81,20 @@ class VirtualReceiverNode:
         text = packet.text
 
         # Process via TTS (automatic voice selection with script compatibility guard)
-        out_wav = PROJECT_ROOT / "benchmarks" / "results" / f"received_seq_{packet.seq_num}_{lang_code}.wav"
-        tts_res = self.tts.synthesize(text, lang=lang_code, output_wav=str(out_wav))
-        actual_voice_lang = tts_res["lang"]
+        if self.tts is not None:
+            out_wav = PROJECT_ROOT / "benchmarks" / "results" / f"received_seq_{packet.seq_num}_{lang_code}.wav"
+            tts_res = self.tts.synthesize(text, lang=lang_code, output_wav=str(out_wav))
+            actual_voice_lang = tts_res["lang"]
+        else:
+            out_wav = None
+            tts_res = {"audio_duration_sec": 0.0, "synthesis_time_sec": 0.0, "rtf": 0.0, "lang": lang_code}
+            actual_voice_lang = lang_code
 
         record = {
             "packet": packet,
             "tts_res": tts_res,
             "raw_len": len(raw_bytes),
-            "out_wav": str(out_wav),
+            "out_wav": str(out_wav) if out_wav else "",
             "recv_time": recv_time
         }
         self.received_messages.append(record)
@@ -102,8 +111,10 @@ class VirtualReceiverNode:
         print(f"Mode:        {'PTT Walkie-Talkie' if packet.is_ptt else 'Phone VAD'}")
         print(f"Packet Size: {len(raw_bytes)} Bytes (Ultra-Low Bitrate Neural Frame)")
         print(f"Text:        \"{text}\"")
-        print(f"TTS Output:  Generated {tts_res['audio_duration_sec']}s audio in {tts_res['synthesis_time_sec']}s (RTF: {tts_res['rtf']})")
-        print(f"Audio Saved: {out_wav.name}")
+        if self.tts is not None:
+            print(f"TTS Output:  Generated {tts_res['audio_duration_sec']}s audio in {tts_res['synthesis_time_sec']}s (RTF: {tts_res['rtf']})")
+            if out_wav:
+                print(f"Audio Saved: {out_wav.name}")
         print("=" * 70 + "\n")
 
     def stop(self):
@@ -118,10 +129,10 @@ class VirtualTransmitterNode:
         self.dest_port = dest_port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.stt = VoskOfflineSTT(lang="hi")
+        self.stt = VoskOfflineSTT(lang="hi") if VoskOfflineSTT is not None else None
         self.seq_counter = 0
 
-    def transmit_text(self, text: str, lang: str = "auto", is_emergency: bool = False, is_ptt: bool = True) -> TantraPacket:
+    def transmit_text(self, text: str, lang: str = "auto", is_emergency: bool = False, is_alert: bool = False, is_ptt: bool = True) -> TantraPacket:
         self.seq_counter += 1
         if lang == "auto":
             lang_code = detect_language_from_text(text)
@@ -133,6 +144,7 @@ class VirtualTransmitterNode:
             text=text,
             lang_id=lang_id,
             is_emergency=is_emergency,
+            is_alert=is_alert,
             is_ptt=is_ptt,
             seq_num=self.seq_counter
         )
@@ -264,15 +276,20 @@ def run_interactive(is_network: bool = False):
                 continue
 
             is_sos = False
+            is_alert = False
             msg_text = user_input
-            if user_input.lower().startswith("sos:") or user_input.lower().startswith("alert:"):
+            if user_input.lower().startswith("sos:"):
                 is_sos = True
+                msg_text = user_input.split(":", 1)[1].strip()
+            elif user_input.lower().startswith("alert:"):
+                is_alert = True
                 msg_text = user_input.split(":", 1)[1].strip()
 
             transmitter.transmit_text(
                 text=msg_text,
                 lang=current_lang,
                 is_emergency=is_sos,
+                is_alert=is_alert,
                 is_ptt=True
             )
             time.sleep(0.4)

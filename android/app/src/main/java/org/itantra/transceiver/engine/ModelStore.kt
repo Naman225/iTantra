@@ -73,8 +73,7 @@ object ModelStore {
      */
     fun importModelZip(context: Context, inputStream: java.io.InputStream, langCode: String): Boolean {
         val targetDir = getModelDir(context, langCode)
-        if (!targetDir.exists()) targetDir.mkdirs()
-
+        val targetCanonical = targetDir.canonicalPath
         return try {
             val zis = java.util.zip.ZipInputStream(inputStream)
             var entry = zis.nextEntry
@@ -82,6 +81,11 @@ object ModelStore {
 
             while (entry != null) {
                 val newFile = File(targetDir, entry.name)
+                // Zip-slip security protection: prevent directory traversal
+                if (!newFile.canonicalPath.startsWith(targetCanonical + File.separator) && newFile.canonicalPath != targetCanonical) {
+                    throw SecurityException("Security Alert: Malicious zip entry path traversal: ${entry.name}")
+                }
+
                 if (entry.isDirectory) {
                     newFile.mkdirs()
                 } else {
@@ -121,7 +125,12 @@ object ModelStore {
             return activeModel
         }
 
-        // Close previous model
+        // Close previous native model to free Kaldi memory
+        try {
+            activeModel?.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing previous Vosk model: ${e.message}")
+        }
         activeModel = null
         activeLangCode = null
 
@@ -154,6 +163,11 @@ object ModelStore {
 
     @Synchronized
     fun unload() {
+        try {
+            activeModel?.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing model on unload: ${e.message}")
+        }
         activeModel = null
         activeLangCode = null
     }

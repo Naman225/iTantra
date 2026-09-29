@@ -105,8 +105,11 @@ class BluetoothServerManager(
 
                     if (headerBuffer[0] != TantraPacket.MAGIC_BYTE) continue
 
+                    val flags = headerBuffer[1].toInt() and 0xFF
+                    val isAuth = (flags and (TantraPacket.FLAG_AUTH_HMAC.toInt() and 0xFF)) != 0
+
                     val payloadLen = ((headerBuffer[4].toInt() and 0xFF) shl 8) or (headerBuffer[5].toInt() and 0xFF)
-                    val remainingLen = payloadLen + 2
+                    val remainingLen = if (isAuth) (2 + payloadLen + 8 + 2) else (payloadLen + 2)
                     val remainingBuffer = ByteArray(remainingLen)
 
                     var totalRemRead = 0

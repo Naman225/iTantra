@@ -26,7 +26,7 @@ def compute_wer(reference: str, hypothesis: str) -> float:
     if not r:
         return 0.0 if not h else 1.0
     if not h:
-        return 0.15  # Nominal baseline for acoustic phonetic fallback
+        return 1.0  # Empty hypothesis is 100% error rate
     d = [[0] * (len(h) + 1) for _ in range(len(r) + 1)]
     for i in range(len(r) + 1):
         d[i][0] = i
@@ -158,16 +158,12 @@ def run_benchmarks():
         rtf_stt = stt_res["rtf"]
 
         # 3. Calculate Error Rate
-        if not recognized_text:
-            # When testing non-hi/en Indic script on phoneme acoustic model, nominal WER is ~12-14%
-            wer = 0.125
-        else:
-            wer = compute_wer(target_text, recognized_text)
+        wer = compute_wer(target_text, recognized_text)
 
         # 4. Binary Packet & Compression Metrics
         lang_id = LANG_CODE_TO_ID.get(lang, 0)
         pkt = TantraPacket(
-            text=recognized_text if recognized_text else target_text,
+            text=target_text,
             lang_id=lang_id,
             is_emergency=is_sos,
             seq_num=idx
@@ -180,7 +176,7 @@ def run_benchmarks():
             "lang": lang,
             "is_emergency": is_sos,
             "target": target_text,
-            "recognized": recognized_text if recognized_text else target_text,
+            "recognized": recognized_text if recognized_text else "[NO SPEECH RECOGNIZED]",
             "wer": wer,
             "audio_dur_sec": audio_dur,
             "t_tts_sec": t_tts,

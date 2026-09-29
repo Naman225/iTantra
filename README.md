@@ -3,10 +3,10 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Offline](https://img.shields.io/badge/Offline-100%25_No_Cloud-green.svg)](README.md)
 [![Languages](https://img.shields.io/badge/Languages-10_Indian_Regional-orange.svg)](README.md)
-[![Bandwidth](https://img.shields.io/badge/Bandwidth_Saved->99.9%25-brightgreen.svg)](README.md)
+[![Bandwidth](https://img.shields.io/badge/Bandwidth_Saved->95%25_vs_Opus-brightgreen.svg)](README.md)
 [![Platform](https://img.shields.io/badge/Platform-Android_Native_Compose-purple.svg)](android/)
 
-> **iTantra** is an ultra-low-bitrate, 100% offline tactical neural voice transceiver platform built for disaster response, field teams, and defense scenarios over constrained radio links across **10 Indian languages**.
+> **iTantra** is an ultra-low-bitrate, 100% offline tactical neural voice transceiver platform built for disaster response, field teams, and defense scenarios over constrained radio links across Indian languages.
 
 **[Download APK v1.0.0](https://github.com/Naman225/iTantra/releases/download/v1.0.0/iTantra-v1.0-release.apk)** | **[Website](https://naman225.github.io/itantra-site/)**
 
@@ -18,21 +18,23 @@
 
 During disasters (floods, landslides, cyclones) or in tactical border zones:
 
-1. Cellular and telecom networks completely fail.
-2. Standard voice codecs require 32,000 bytes/sec (256 kbps). Over low-power radio links (LoRa at 0.3–2 kbps, tactical VHF/UHF, or congested mesh), live audio stalls or fails entirely.
-3. Victims and field personnel cannot rely on text-only chat — emergency responders and civilians under distress need natural, hands-free voice-in and voice-out without typing.
+1. **Cellular and telecom backhauls fail.**
+2. **Standard voice codecs require significant bandwidth**: Even compressed voice codecs like Opus require 6,000–16,000 bps. Over long-range low-power radio links (LoRa at 0.3–2 kbps, tactical VHF/UHF, or congested mesh), streaming continuous audio packets suffers severe packet loss, latency spikes, or complete collapse.
+3. **Emergency personnel and victims cannot rely on text-only chat**: First responders and civilians in crisis need hands-free **voice-in and voice-out** without having to look at or type on a screen.
 
 ### The Breakthrough
 
-**Send microscopic text tokens across the air, but let humans speak and listen.**
+**Transmit microscopic text tokens over the airwaves, while enabling natural voice interaction for humans.**
 
-Instead of pushing heavy analog or PCM audio through constrained airwaves, iTantra performs on-device speech-to-text (Vosk/Kaldi ASR), encapsulates the sentence and priority metadata into a tiny ~48-byte binary frame (`TantraPacket`), broadcasts it over ad-hoc peer-to-peer radio channels (Wi-Fi Direct, Bluetooth RFCOMM, or LoRa), and synthesizes natural spoken voice locally on the receiver device via an on-device Piper neural TTS engine.
+Instead of pushing raw or compressed audio through congested or narrow-band links, iTantra performs on-device speech-to-text (Vosk Kaldi edge ASR), encapsulates recognized text and priority metadata into a compact binary frame (`TantraPacket`), broadcasts it over ad-hoc peer-to-peer radio channels (Wi-Fi Direct, Bluetooth RFCOMM, or LoRa), and synthesizes spoken voice locally on the receiving device via offline speech synthesis.
 
-$$\text{Effective Bitrate} = \frac{(8\text{ bytes header} + 40\text{ bytes payload}) \times 8\text{ bits}}{3.5\text{ seconds speech}} \approx \mathbf{132\text{ bps}}$$
+$$\text{Effective Bitrate (English)} = \frac{38\text{ bytes} \times 8\text{ bits}}{2.0\text{ seconds speech}} \approx \mathbf{152\text{ bps}}$$
 
-- **Bandwidth reduction**: 99.9% savings compared to raw PCM audio (256 kbps to ~132 bps).
-- **Sub-second latency**: 0.69s – 0.96s end-to-end turnaround.
-- **Extreme reach**: Voice communication over long-range LoRa (10–15 km) and tactical radios where streaming raw audio is physically impossible.
+$$\text{Effective Bitrate (Indic UTF-8)} = \frac{150\text{ bytes} \times 8\text{ bits}}{3.5\text{ seconds speech}} \approx \mathbf{342\text{ bps}}$$
+
+- **Bandwidth reduction**: **~50–70% savings** compared to low-bitrate Codec2 (700 bps), **>95% savings** vs Opus (6 kbps), and **>99% savings** vs uncompressed 16 kHz 16-bit PCM audio (256 kbps).
+- **Sub-second latency**: 0.7s – 1.0s turnaround in local edge mode.
+- **Extended reach**: Enables intelligible voice communication over long-range LoRa links (up to 10–15 km with directional antennas/SF12) where streaming continuous audio streams is physically impossible.
 
 ---
 
@@ -46,12 +48,12 @@ $$\text{Effective Bitrate} = \frac{(8\text{ bytes header} + 40\text{ bytes paylo
                ┌───────────────┴───────────────┐
                ▼                               ▼
        [ Walkie-Talkie (PTT) ]       [ Phone Call Mode (VAD) ]
-     (Instant push-to-talk)          (Silero / Energy VAD)
+     (Instant push-to-talk)          (Energy-Spectral VAD)
                │                               │
                └───────────────┬───────────────┘
                                ▼
             [ Offline Edge STT Engine (Vosk / Kaldi) ]
-           100% On-Device Neural Acoustic Models
+           On-Device Acoustic Models (Hindi / English / Dialects)
                                │  Recognized Text
                                ▼
                  [ 3-Tier Priority Triage & LID ]
@@ -59,17 +61,17 @@ $$\text{Effective Bitrate} = \frac{(8\text{ bytes header} + 40\text{ bytes paylo
                                │
                                ▼
         [ iTantra Binary Protocol Framer (TantraPacket) ]
-        [Magic: 0x54 | Flags(SOS/Alert) | Seq | Len | Payload | CRC16]
-        (Header: 8 Bytes | Total: ~48 Bytes)
+    [Magic: 0x54 | Flags | SeqNum | PayloadLen | (NodeID/HMAC) | Payload | CRC16]
+        (Standard: 8B Overhead | Authenticated: 18B Overhead)
                                │
                                ▼
              [ Multi-Bearer Ad-Hoc Radio Layer ]
      ┌─────────────────────────┼─────────────────────────┐
      ▼                         ▼                         ▼
 [ Wi-Fi Hotspot/Direct ]  [ Bluetooth RFCOMM ]    [ Sub-GHz LoRa ]
-(UDP Broadcast: 8888)     (Serial SPP Socket)     (SX1262 10-15 km)
+ (UDP Broadcast: 5005)    (Serial SPP Socket)    (SX1276 865.2 MHz)
      ═════════════════════════════════════════════════════════
-             Zero-Internet Ad-Hoc Mesh Link (~132 bps)
+             Zero-Internet Ad-Hoc Mesh Link (~150-350 bps)
      ═════════════════════════════════════════════════════════
                                │
                                ▼
@@ -83,11 +85,11 @@ $$\text{Effective Bitrate} = \frac{(8\text{ bytes header} + 40\text{ bytes paylo
                ▼                               ▼
      [ Normal Voice Message ]         [ SOS / Hazard Alert ]
    - Transcript feed card           - Override volume to 100%
-   - Haptic feedback                - Continuous vibration alarm
+   - Haptic feedback                - Continuous vibration alert
                │                               │
                └───────────────┬───────────────┘
                                ▼
-           [ On-Device Neural TTS Engine (Piper ONNX) ]
+           [ On-Device Offline TTS Engine (Local Voice) ]
           Reconstructs natural spoken voice in target language
                                │
                                ▼
@@ -101,22 +103,24 @@ $$\text{Effective Bitrate} = \frac{(8\text{ bytes header} + 40\text{ bytes paylo
 The production Android client is built with Jetpack Compose and Material 3:
 
 - **Dual Interaction Modes**:
-  - **Walkie-Talkie (PTT)**: Tactical press-and-hold dial with instant mic engagement and haptic feedback.
+  - **Walkie-Talkie (PTT)**: Half-duplex tactical push-and-hold dial with instant mic engagement and haptic feedback.
   - **Phone Call (VAD)**: Hands-free calling that auto-transmits when speech is detected, with mute and end-call controls.
 - **3-Tier Priority Classification**:
-  - **SOS (Red)**: Instant distress beacon with continuous vibration until acknowledged.
-  - **Alert (Yellow)**: Triggered by danger keywords (khatra, danger, emergency).
+  - **SOS (Red)**: Priority distress beacon with continuous vibration alert until acknowledged.
+  - **Alert (Yellow)**: Triggered by danger keywords (*khatra*, *danger*, *emergency*).
   - **Normal (Green)**: Standard routine tactical communication.
-- **Multilingual Language Switcher**: Offline models for Hindi, English, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada, Malayalam, Punjabi, and Odia.
-- **LoRa Mesh Broadcast**: Scan, pair, and broadcast over LoRa SX1262/SX1278 radio modules.
-- **Zero-Cloud P2P Mesh**: Wi-Fi Hotspot UDP broadcast (port 8888) and Bluetooth RFCOMM for off-grid phone-to-phone links.
+- **Multilingual Support**:
+  - Production offline models: **Hindi (`hi`)** and **Indian English (`en`)**.
+  - Script & phonetic codebooks for 10 regional languages (Gujarati, Marathi, Kannada, Malayalam, Tamil, Telugu, Odia, Bengali).
+- **LoRa Mesh Broadcast**: Interface to pair and broadcast over Semtech SX1276 LoRa transceivers operating in the Indian 865–867 MHz de-licensed band.
+- **Zero-Cloud P2P Mesh**: Wi-Fi Hotspot UDP broadcast (port 5005) and Bluetooth RFCOMM for off-grid phone-to-phone links.
 - **Activity & Transcript Feed**: Real-time incoming/outgoing messages with instant replay TTS.
 
 ---
 
 ## TantraPacket Binary Protocol
 
-Compact fixed binary frame for extreme transmission reliability over constrained RF links:
+Fixed binary framing designed for low overhead and corruption rejection over constrained RF links:
 
 ```
   0                   1                   2                   3
@@ -124,36 +128,50 @@ Compact fixed binary frame for extreme transmission reliability over constrained
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  |  Magic (0x54) |     Flags     |        Sequence Number        |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |         Payload Length        |       UTF-8 Payload Text      |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
- |                                                               |
+ |         Payload Length        |       [Node ID (if Auth)]     |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                      UTF-8 Payload Text                       |
+ |                              ...                              |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |               [HMAC-SHA256 8-Byte Tag (if Auth)]              |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  |            CRC-16 CCITT Checksum (Polynomial 0x1021)          |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+### Frame Fields
+
 | Field | Size | Description |
 | :--- | :--- | :--- |
 | **Magic Byte** | 1 Byte | `0x54` ('T' for Tantra) |
-| **Flags** | 1 Byte | Bit 7: SOS Distress, Bit 6: Alert/Hazard, Bits 0-3: Language ID |
-| **Sequence Number** | 2 Bytes | uint16 packet counter for deduplication |
+| **Flags** | 1 Byte | Bit 7: SOS Distress (`0x80`), Bit 6: PTT Mode (`0x40`), Bit 5: Alert (`0x20`), Bit 4: HMAC Auth (`0x10`), Bits 0–3: Language ID |
+| **Sequence Number** | 2 Bytes | uint16 counter for deduplication and ordering |
 | **Payload Length** | 2 Bytes | uint16 byte count of UTF-8 payload |
-| **Payload** | Dynamic | UTF-8 encoded text (~30-80 bytes) |
-| **CRC-16 CCITT** | 2 Bytes | Polynomial `0x1021` for corruption detection |
-| **Total Overhead** | **8 Bytes** | Ultra-lightweight binary envelope |
+| **Node ID** *(optional)* | 2 Bytes | uint16 transmitter node identifier (present when Flag Bit 4 is set) |
+| **Payload** | Dynamic | UTF-8 encoded text (~30–180 bytes) |
+| **HMAC Tag** *(optional)* | 8 Bytes | Truncated HMAC-SHA256 for frame authentication and tamper detection |
+| **CRC-16 CCITT** | 2 Bytes | Polynomial `0x1021` (init `0xFFFF`) for corruption detection |
 
 ---
 
-## Measured Benchmarks
+## Measured Benchmarks & Comparisons
 
-| Metric | Result | Baseline | Advantage |
+### Realistic Protocol Metrics
+
+| Language / Script | Typical Sentence Size | Effective Bitrate (3.5s speech) | LoRa Airtime (SF7 / BW 125k) |
 | :--- | :--- | :--- | :--- |
-| **TTS Real-Time Factor** | **0.049** | 1.0 (real-time) | 20x faster than real-time |
-| **STT Real-Time Factor** | **0.163** | 1.0 (real-time) | 6x faster than real-time |
-| **End-to-End Latency** | **0.69s – 0.96s** | 2.5s – 5.0s (VoLTE) | Sub-second tactical voice |
-| **Packet Size** | **~48 Bytes** | 64,000 B/sec (PCM) | 99.9% bandwidth saved |
-| **RAM Footprint** | **< 30 MB** | 300+ MB (cloud APIs) | Zero thermal throttling |
-| **LoRa Range** | **10–15 km** | 300m (Bluetooth) | Long-range disaster comms |
+| **English (Latin)** | 38 – 77 Bytes | ~90 – 176 bps | ~110 – 140 ms |
+| **Hindi (Devanagari)** | 86 – 153 Bytes | ~196 – 350 bps | ~180 – 250 ms |
+| **Indic Scripts (Tamil, Telugu, etc.)** | 120 – 180 Bytes | ~274 – 411 bps | ~220 – 290 ms |
+
+### Comparison Across Audio Standards
+
+| Audio Format | Nominal Bitrate | iTantra Advantage | Practical Feasibility on LoRa |
+| :--- | :--- | :--- | :--- |
+| **Raw PCM Audio (16kHz 16-bit)** | 256,000 bps | **> 99.8% bandwidth saved** | Physically impossible |
+| **Opus Voice Codec** | 6,000 – 16,000 bps | **> 95.0% bandwidth saved** | Severe packet loss on long links |
+| **Codec2 (Tactical Radio Standard)** | 700 – 1,200 bps | **~50 – 70% bandwidth saved** | Marginal / Slow throughput |
+| **iTantra Neural Protocol** | **~150 – 350 bps** | **Baseline** | **Reliable transmission across full range** |
 
 ---
 
@@ -166,62 +184,66 @@ Compact fixed binary frame for extreme transmission reliability over constrained
 │   │   ├── build.gradle         # Dependencies: Compose, Coroutines, Vosk AAR
 │   │   └── src/main/
 │   │       ├── AndroidManifest.xml
-│   │       ├── assets/          # Offline Vosk acoustic models
+│   │       ├── assets/          # Acoustic model store
 │   │       └── java/org/itantra/transceiver/
 │   │           ├── MainActivity.kt
 │   │           ├── audio/       # AudioRecordManager, AudioPlayer, SpectralFilter
 │   │           ├── emergency/   # EmergencyAlertManager, KeywordClassifier, NotificationHelper
-│   │           ├── engine/      # STT, TTS, VAD, ModelStore, LatencyTracker
+│   │           ├── engine/      # SpeechToTextManager, TextToSpeechManager, ModelStore
 │   │           ├── protocol/    # TantraPacket, PhraseCodebook
-│   │           ├── radio/       # UdpTransceiver, BluetoothTransceiver, LoRa, RadioBus
+│   │           ├── radio/       # UdpRadioTransceiver, BluetoothTransceiver, RadioBus
 │   │           └── ui/screens/  # HomeScreen, Dashboard, ConnectDevice, LoRaBroadcast, About
 │   ├── build.gradle
 │   └── settings.gradle
-├── core_engine/                 # Python Offline Engine & Simulator
+├── core_engine/                 # Python Engine & Simulator
 │   ├── protocol/tantra_packet.py
 │   ├── stt/stt_engine.py
 │   ├── tts/tts_engine.py
+│   ├── vad/vad_engine.py
 │   └── virtual_transceiver.py
-├── embedded/                    # LoRa Hardware Firmware
-│   └── iTantra_LoRa_Node.ino
-├── benchmarks/                  # Quantitative Metrics
+├── embedded/                    # LoRa Hardware Gateway Firmware
+│   └── iTantra_LoRa_Node.ino   # ESP32 + Semtech SX1276 SPP/LoRa relay
+├── benchmarks/                  # Quantitative Metrics & Test Suites
 │   ├── test_models.py
 │   └── results/
-├── tests/                       # Automated Test Suite
+├── tests/                       # Automated Test Suite (Protocol, CRC, HMAC, Networking)
 │   └── test_all.py
-└── docs/                        # Architecture diagrams, pitch assets, website
+└── docs/                        # Architecture diagrams, pitch deck assets, guides
     ├── assets/
-    └── site/                    # Production landing page
+    └── site/                    # Landing page deployment
 ```
 
 ---
 
 ## Quickstart
 
-### 1. Python Transceiver Simulator
-
-```bash
-python core_engine/virtual_transceiver.py -i
-```
-
-Type a message in English or Hindi. Prefix with `alert:` or `sos:` to trigger emergency triage.
-
-### 2. Automated Tests
+### 1. Run Automated Test Suite
 
 ```bash
 python tests/test_all.py
 ```
 
+Runs protocol serialization, CRC-16 polynomial checks, HMAC tamper detection, language detection, and end-to-end socket transceiver tests.
+
+### 2. Run Interactive Transceiver Terminal
+
+```bash
+python core_engine/virtual_transceiver.py -i
+```
+
+- Type in English or Hindi (`Base station unit 4 radio check`).
+- Prefix with `sos:` for emergency distress broadcast (`sos: need medical assistance`).
+- Prefix with `alert:` for tactical yellow hazard warnings (`alert: water rising rapidly`).
+
 ### 3. Android Application
 
-1. Open the `android/` directory in Android Studio.
-2. Allow Gradle to sync.
-3. Connect an Android device (USB debugging enabled) and run.
-4. **Two-Phone Test**: Turn on hotspot on Phone 1, connect Phone 2, launch iTantra on both, speak.
+1. Open `android/` in Android Studio.
+2. Build and install on an Android device (API 26+).
+3. Connect two phones via Portable Wi-Fi Hotspot or Bluetooth to test off-grid communications.
 
 ---
 
-## Contributors
+## Contributors & Organization
 
 - **Developer**: Naman Tiwari
 - **Project**: Smart India Hackathon (SIH 2026)

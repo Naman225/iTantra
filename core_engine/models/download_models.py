@@ -38,9 +38,9 @@ VOSK_STT_MODELS = {
         "name": "Bengali (small-bn-0.4)"
     },
     "gu": {
-        "url": "https://alphacephei.com/vosk/models/vosk-model-small-gu-0.4.zip",
-        "extracted_name": "vosk-model-small-gu-0.4",
-        "name": "Gujarati (small-gu-0.4)"
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-gu-0.42.zip",
+        "extracted_name": "vosk-model-small-gu-0.42",
+        "name": "Gujarati (small-gu-0.42)"
     },
     "mr": {
         "url": "https://alphacephei.com/vosk/models/vosk-model-small-mr-0.4.zip",
@@ -63,9 +63,9 @@ VOSK_STT_MODELS = {
         "name": "Tamil (small-ta-0.4)"
     },
     "te": {
-        "url": "https://alphacephei.com/vosk/models/vosk-model-small-te-0.4.zip",
-        "extracted_name": "vosk-model-small-te-0.4",
-        "name": "Telugu (small-te-0.4)"
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-te-0.42.zip",
+        "extracted_name": "vosk-model-small-te-0.42",
+        "name": "Telugu (small-te-0.42)"
     },
     "or": {
         "url": "https://alphacephei.com/vosk/models/vosk-model-small-or-0.4.zip",

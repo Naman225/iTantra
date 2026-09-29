@@ -17,7 +17,7 @@
 #define BOARD_HELTEC_V2_SX1276 2
 
 #ifndef TARGET_BOARD
-#define TARGET_BOARD BOARD_HELTEC_V3_SX1262
+#define TARGET_BOARD BOARD_HELTEC_V2_SX1276
 #endif
 
 #include <SPI.h>
@@ -107,9 +107,17 @@ void loop() {
     }
 
     if (header[0] == 0x54) { // 'T' magic byte
+      uint8_t flags = header[1];
       uint16_t seq = (header[2] << 8) | header[3];
       uint16_t payloadLen = (header[4] << 8) | header[5];
-      uint16_t totalExpected = payloadLen + 2; // Payload + 2-byte CRC
+      bool isAuth = (flags & 0x10) != 0;
+      uint16_t totalExpected = isAuth ? (2 + payloadLen + 8 + 2) : (payloadLen + 2);
+
+      // Bounds check to prevent buffer overflow (I-11)
+      if (6 + totalExpected > 256) {
+        Serial.printf("[DROP] Packet too large for buffer: %d bytes\n", 6 + totalExpected);
+        return;
+      }
 
       uint8_t frameBuffer[256];
       memcpy(frameBuffer, header, 6);

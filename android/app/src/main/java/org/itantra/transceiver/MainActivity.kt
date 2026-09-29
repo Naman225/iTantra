@@ -163,12 +163,7 @@ class MainActivity : ComponentActivity() {
 
         radioTransceiver.startListening()
 
-        // Start Background Foreground Service (I-10)
-        try {
-            RadioService.start(this)
-        } catch (e: Exception) {
-            android.util.Log.w("MainActivity", "Failed to start RadioService: ${e.message}")
-        }
+
 
         // Setup persistent local node ID for deduplication, loopback drop, and security (I-09)
         val savedNodeId = prefs.getInt("local_node_id", 0)
@@ -227,8 +222,22 @@ class MainActivity : ComponentActivity() {
             permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
         }
 
+        val permLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            try {
+                RadioService.start(this)
+            } catch (e: Exception) {
+                android.util.Log.w("MainActivity", "Deferred RadioService start: ${e.message}")
+            }
+        }
+
         if (permissionsToRequest.isNotEmpty()) {
-            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }.launch(permissionsToRequest.toTypedArray())
+            permLauncher.launch(permissionsToRequest.toTypedArray())
+        } else {
+            try {
+                RadioService.start(this)
+            } catch (e: Exception) {
+                android.util.Log.w("MainActivity", "RadioService start: ${e.message}")
+            }
         }
 
         setContent {
@@ -324,7 +333,7 @@ class MainActivity : ComponentActivity() {
                 val emergencyText = when (selectedLangId) {
                     0 -> "आपातकालीन संदेश: संकट संकेत सक्रिय किया गया तुरंत सहायता भेजें!" // Hindi
                     1 -> "Emergency SOS: Distress beacon activated immediate assistance required!" // English
-                    2 -> "કટોકટી संदेश: તાત્કાલિક સહાય મોકલો!" // Gujarati
+                    2 -> "કટોકટી સંદેશ: તાત્કાલિક સહાય મોકલો!" // Gujarati
                     3 -> "आणीबाणी संदेश: संकट सिग्नल सक्रिय झाला आहे त्वरित मदत पाठवा!" // Marathi
                     4 -> "ತುರ್ತು ಸಂದೇಶ: ತಕ್ಷಣವೇ ಸಹಾಯ ಕಳುಹಿಸಿ!" // Kannada
                     5 -> "അടിയന്തര സന്ദേശം: ഉടൻ സഹായം അയക്കുക!" // Malayalam

@@ -357,7 +357,7 @@ fun DashboardScreen(
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             isScanning = true
                             onSendPing()
-                            Toast.makeText(context, "📡 Scanning airlink for nearby iTantra radios...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Scanning airlink for nearby iTantra radios...", Toast.LENGTH_SHORT).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                         shape = RoundedCornerShape(8.dp),

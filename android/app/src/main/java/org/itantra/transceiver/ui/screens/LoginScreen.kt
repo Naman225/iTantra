@@ -268,7 +268,7 @@ fun LoginScreen(
                                 Text("Verifying…", fontSize = 14.sp)
                             } else {
                                 Text(
-                                    text = "Continue  ➔",
+                                    text = "Continue",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )

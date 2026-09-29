@@ -104,7 +104,7 @@ class NotificationHelper(private val context: Context) {
         val title = when {
             isEmergency -> "🚨 RED SOS: EMERGENCY DISTRESS"
             isAlert -> "⚠️ YELLOW ALERT: TACTICAL WARNING"
-            else -> "📻 $sender"
+            else -> sender
         }
 
         val content = when {

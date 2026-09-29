@@ -484,26 +484,11 @@ private fun AboutFooter() {
             .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Made with ",
-                color = TextSecondary,
-                fontSize = 13.sp
-            )
-            Text(
-                text = "❤",
-                color = SOSRed,
-                fontSize = 14.sp
-            )
-            Text(
-                text = " in India",
-                color = TextSecondary,
-                fontSize = 13.sp
-            )
-        }
+        Text(
+            text = "Made in India",
+            color = TextSecondary,
+            fontSize = 13.sp
+        )
 
         Spacer(modifier = Modifier.height(4.dp))
 

@@ -137,7 +137,7 @@ fun LoraBroadcastScreen(
                             isLoraBroadcastEnabled = it
                             Toast.makeText(
                                 context,
-                                if (it) "🟢 LoRa Mesh Broadcast Enabled" else "⏸️ LoRa Mesh Broadcast Paused",
+                                if (it) "LoRa Mesh Broadcast Enabled" else "LoRa Mesh Broadcast Paused",
                                 Toast.LENGTH_SHORT
                             ).show()
                         },
@@ -204,7 +204,7 @@ fun LoraBroadcastScreen(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onScanBt()
-                            Toast.makeText(context, "🔍 Scanning for nearby LoRa devices...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Scanning for nearby LoRa devices...", Toast.LENGTH_SHORT).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                         shape = RoundedCornerShape(8.dp),
@@ -367,7 +367,7 @@ fun LoraBroadcastScreen(
                             }
                         }
                         Text(
-                            text = "🟢 Active",
+                            text = "Active",
                             fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = AccentGreen
@@ -412,7 +412,7 @@ fun LoraBroadcastScreen(
                             isSendingPing = true
                             onSendLoraPing()
                             lastPingResult = "Frame Sent • 42 Bytes • Airtime: 114 ms • 865.2 MHz SF7"
-                            Toast.makeText(context, "📡 Broadcasted authenticated LoRa Ping!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Broadcasted authenticated LoRa Ping!", Toast.LENGTH_SHORT).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                         shape = RoundedCornerShape(10.dp),

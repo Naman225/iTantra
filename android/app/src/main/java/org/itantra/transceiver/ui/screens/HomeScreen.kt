@@ -446,7 +446,7 @@ fun HomeScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isCallActive) "📞 Hands-Free Call • VAD Auto-Detecting Speech (${TantraPacket.LANG_NAMES[selectedLangId]})"
+                            text = if (isCallActive) "Hands-Free Call • VAD Auto-Detecting Speech (${TantraPacket.LANG_NAMES[selectedLangId]})"
                             else if (isProcessing) "Processing audio transcription…"
                             else "Live Transcription (${TantraPacket.LANG_NAMES[selectedLangId]})",
                             color = if (isCallActive) Color(0xFF2E7D32) else PrimaryBlue,

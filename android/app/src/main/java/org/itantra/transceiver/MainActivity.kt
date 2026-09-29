@@ -598,7 +598,7 @@ fun ITantraApp(
 
                     // Footer
                     Text(
-                        text = "Made with ❤️ in India • SIH 2026",
+                        text = "Made in India • SIH 2026",
                         color = TextSecondary,
                         fontSize = 12.sp,
                         modifier = Modifier

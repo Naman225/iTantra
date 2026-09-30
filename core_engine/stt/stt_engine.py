@@ -21,13 +21,26 @@ LANGUAGE_MODEL_MAP = {
     "hi": "vosk-model-small-hi-0.22",
     "en": "vosk-model-small-en-in-0.4",
     "bn": "vosk-model-small-bn-0.4",
-    "gu": "vosk-model-small-gu-0.4",
+    "gu": "vosk-model-small-gu-0.42",
     "mr": "vosk-model-small-mr-0.4",
     "kn": "vosk-model-small-kn-0.4",
     "ml": "vosk-model-small-ml-0.4",
     "ta": "vosk-model-small-ta-0.4",
-    "te": "vosk-model-small-te-0.4",
+    "te": "vosk-model-small-te-0.42",
     "or": "vosk-model-small-or-0.4",
+}
+
+LANGUAGE_MODEL_CANDIDATES = {
+    "hi": ["vosk-model-small-hi-0.22"],
+    "en": ["vosk-model-small-en-in-0.4"],
+    "bn": ["vosk-model-small-bn-0.4"],
+    "gu": ["vosk-model-small-gu-0.42", "vosk-model-small-gu-0.4"],
+    "mr": ["vosk-model-small-mr-0.4"],
+    "kn": ["vosk-model-small-kn-0.4"],
+    "ml": ["vosk-model-small-ml-0.4"],
+    "ta": ["vosk-model-small-ta-0.4"],
+    "te": ["vosk-model-small-te-0.42", "vosk-model-small-te-0.4"],
+    "or": ["vosk-model-small-or-0.4"],
 }
 
 # Aliases
@@ -62,13 +75,16 @@ class VoskOfflineSTT:
 
     def load_model(self, lang: str) -> float:
         normalized_lang = LANG_ALIASES.get(lang.lower().strip(), lang.lower().strip())
-        if normalized_lang not in LANGUAGE_MODEL_MAP:
-            normalized_lang = "hi"
+        candidates = LANGUAGE_MODEL_CANDIDATES.get(normalized_lang, ["vosk-model-small-hi-0.22"])
+        
+        model_path = None
+        for cand in candidates:
+            p = MODELS_DIR / cand
+            if p.exists() and p.is_dir():
+                model_path = p
+                break
 
-        model_folder_name = LANGUAGE_MODEL_MAP[normalized_lang]
-        model_path = MODELS_DIR / model_folder_name
-
-        if not model_path.exists():
+        if model_path is None:
             # Graceful acoustic fallback to Hindi or English if specific language pack not downloaded yet
             fallback_path = MODELS_DIR / "vosk-model-small-hi-0.22"
             if not fallback_path.exists():
@@ -77,8 +93,9 @@ class VoskOfflineSTT:
                 raise FileNotFoundError(
                     f"No Vosk STT models found in {MODELS_DIR}. Run download_models.py first."
                 )
+            target_name = candidates[0]
             logger.warning(
-                f"Model for {normalized_lang} ({model_path.name}) not found locally. "
+                f"Model for {normalized_lang} ({target_name}) not found locally. "
                 f"Falling back to shared acoustic model: {fallback_path.name}"
             )
             model_path = fallback_path

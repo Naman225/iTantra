@@ -44,8 +44,8 @@ VOICE_CONFIGS = {
         "name": "Indic Kannada (Medium)"
     },
     "ml": {
-        "model": "ml_IN-indic-medium.onnx",
-        "name": "Indic Malayalam (Medium)"
+        "model": "ml_IN-arjun-medium.onnx",
+        "name": "Malayalam Arjun (Medium)"
     },
     "ta": {
         "model": "ta_IN-indic-medium.onnx",

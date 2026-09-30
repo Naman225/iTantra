@@ -118,11 +118,11 @@ PIPER_TTS_MODELS = {
         "name": "Kannada Indic Medium"
     },
     "ml": {
-        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ml/ml_IN/indic/medium/ml_IN-indic-medium.onnx",
-        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ml/ml_IN/indic/medium/ml_IN-indic-medium.onnx.json",
-        "onnx_file": "ml_IN-indic-medium.onnx",
-        "json_file": "ml_IN-indic-medium.onnx.json",
-        "name": "Malayalam Indic Medium"
+        "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ml/ml_IN/arjun/medium/ml_IN-arjun-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ml/ml_IN/arjun/medium/ml_IN-arjun-medium.onnx.json",
+        "onnx_file": "ml_IN-arjun-medium.onnx",
+        "json_file": "ml_IN-arjun-medium.onnx.json",
+        "name": "Malayalam Arjun Medium"
     },
     "ta": {
         "onnx_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/ta/ta_IN/indic/medium/ta_IN-indic-medium.onnx",

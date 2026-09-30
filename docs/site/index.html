@@ -175,11 +175,12 @@
 
 <section class="sec alt" id="benchmarks" aria-labelledby="h-bench">
   <div class="wrap">
-    <div class="head"><h2 id="h-bench">Measured on real Android hardware</h2></div>
+    <div class="head"><h2 id="h-bench">Measured Offline Performance &amp; Benchmarks</h2>
+    <p>Evaluated on tactical and disaster-response voice transmissions with zero cloud connectivity.</p></div>
     <div class="stats" style="margin-top:0" role="list">
-      <div role="listitem"><b>&lt;1.0 s</b><span>end-to-end turnaround latency</span></div>
+      <div role="listitem"><b>~0.8–1.1 s</b><span>end-to-end processing turnaround</span></div>
       <div role="listitem"><b>&gt;95%</b><span>bandwidth reduction vs Opus voice</span></div>
-      <div role="listitem"><b>~150–350 bps</b><span>effective tactical bitrate</span></div>
+      <div role="listitem"><b>~140–320 bps</b><span>effective tactical bitrate</span></div>
       <div role="listitem"><b>&lt;30 MB</b><span>runtime RAM footprint</span></div>
     </div>
     <div class="tw" style="margin-top:32px">
@@ -199,19 +200,19 @@
           <tr>
             <td><b>English</b> (<code>en-IN</code>)</td>
             <td><code>vosk-small-en-in-0.4</code> + <code>lessac-low</code></td>
-            <td><b>0.0%</b></td>
+            <td><b>0.0%–20.0%</b> (tactical commands)</td>
             <td>N/A</td>
-            <td>67 Bytes</td>
-            <td>0.81 s</td>
+            <td>67–79 Bytes</td>
+            <td>0.86–1.10 s</td>
             <td><span style="color:var(--g700);font-weight:700">Verified 100% Offline</span></td>
           </tr>
           <tr>
             <td><b>Hindi</b> (<code>hi-IN</code>)</td>
             <td><code>vosk-small-hi-0.22</code> + <code>pratham-medium</code></td>
-            <td><b>10.0%</b></td>
-            <td><b>2.4%</b></td>
-            <td>143 Bytes</td>
-            <td>0.81 s</td>
+            <td><b>10.0% avg</b> (0.0% on key alerts)</td>
+            <td><b>2.5%</b></td>
+            <td>122–152 Bytes</td>
+            <td>0.90–1.26 s</td>
             <td><span style="color:var(--g700);font-weight:700">Verified 100% Offline</span></td>
           </tr>
           <tr>
@@ -220,16 +221,16 @@
             <td>—</td>
             <td>—</td>
             <td>~150 Bytes (avg)</td>
-            <td>Sub-second</td>
+            <td>~1.0 s</td>
             <td><span style="color:var(--mute)">Drop-in Architecture Ready</span></td>
           </tr>
         </tbody>
       </table>
     </div>
     <div class="note">
-      <h3>Where accuracy drops</h3>
-      <p>In 10 dB acoustic noise, such as cyclone wind or rotor wash, recognition falls by roughly 8–12% without a directional microphone.</p>
-      <p>Two fallbacks cover this: a 100-phrase tactical codebook using 1-byte phrase IDs, and continuous vibration alerts that need no audio.</p>
+      <h3>Measurement Methodology &amp; Fallbacks</h3>
+      <p>Processing turnaround represents the complete computational loop: 16 kHz audio capture $\rightarrow$ STT decode $\rightarrow$ binary packet packing $\rightarrow$ local TTS synthesis on the receiver.</p>
+      <p>In high acoustic noise (e.g. cyclone wind or rotor wash), recognition accuracy degrades by 8–12%. iTantra incorporates two resilient fallbacks: a 100-phrase standardized tactical codebook (1-byte phrase IDs) and continuous tactile vibration alerts that require no audio decoding.</p>
     </div>
   </div>
 </section>

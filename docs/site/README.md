@@ -1,7 +1,7 @@
 # iTantra Showcase Website 🌐
 
 ### 100% Offline Tactical Multilingual Voice Transceiver
-**Smart India Hackathon 2026 · ISRO Problem Statement 26104**
+**Smart India Hackathon 2026 · ISRO Problem Statement 26173**
 
 [![GitHub Release](https://img.shields.io/github/v/release/Naman225/iTantra?style=for-the-badge&logo=github)](https://github.com/Naman225/iTantra/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)

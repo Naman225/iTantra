@@ -1,7 +1,7 @@
 # iTantra — Team Hand-Off & Executive Pitch Summary
 
-> **Problem Statement**: Indian Multilingual TTS & STT Aided Neural Transceiver Radio Access for Low Bitrate Links  
-> **Core Innovation**: Voice-in $\rightarrow$ ~50-byte Neural Radio Packet $\rightarrow$ Voice-out (Zero Internet, 99.9% Bandwidth Reduction)
+> **Problem Statement**: ISRO PS 26173 — Indian Multilingual TTS & STT Aided Neural Transceiver Radio Access for Low Bitrate Links  
+> **Core Innovation**: Voice-in $\rightarrow$ ~100–150 byte Neural Radio Frame $\rightarrow$ Voice-out (Zero Internet, >95% Bandwidth Reduction vs Opus)
 
 ---
 

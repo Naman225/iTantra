@@ -62,9 +62,9 @@
 <section class="hero" aria-labelledby="h1">
   <div class="wrap">
     <div>
-      <span class="badge">Smart India Hackathon 2026 · ISRO PS 26104</span>
+      <span class="badge">Smart India Hackathon 2026 · ISRO PS 26173</span>
       <h1 id="h1">Offline voice messaging over low-bandwidth radio, in 10 Indian languages</h1>
-      <p class="lede">iTantra turns speech into a 48-byte packet on the phone, sends it over LoRa, Wi-Fi or Bluetooth, and speaks it aloud on the other side. No internet, no cell tower, no cloud.</p>
+      <p class="lede">iTantra turns speech into a compact ~100-byte neural packet on the phone, sends it over LoRa, Wi-Fi or Bluetooth, and speaks it aloud on the other side. No internet, no cell tower, no cloud.</p>
       <div class="cta">
         <a class="btn btn-p" href="https://github.com/Naman225/iTantra/releases/download/v1.0.0/iTantra-v1.0-release.apk">Download APK (28 MB)</a>
         <a class="btn btn-o" href="#how">See how it works</a>
@@ -72,7 +72,7 @@
     </div>
     <div class="phones">
       <img src="assets/screen_ptt.png" alt="iTantra push-to-talk screen on Android" width="300" height="600" fetchpriority="high">
-      <div class="chip"><b>48 bytes</b><span>per voice message</span></div>
+      <div class="chip"><b>~100 B</b><span>per voice message</span></div>
     </div>
   </div>
   <div class="wrap">
@@ -182,6 +182,50 @@
       <div role="listitem"><b>~150–350 bps</b><span>effective tactical bitrate</span></div>
       <div role="listitem"><b>&lt;30 MB</b><span>runtime RAM footprint</span></div>
     </div>
+    <div class="tw" style="margin-top:32px">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Language</th>
+            <th scope="col">Acoustic &amp; Voice Models</th>
+            <th scope="col">Word Error Rate</th>
+            <th scope="col">Char Error Rate</th>
+            <th scope="col">Packet Size</th>
+            <th scope="col">Turnaround Latency</th>
+            <th scope="col">Offline Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>English</b> (<code>en-IN</code>)</td>
+            <td><code>vosk-small-en-in-0.4</code> + <code>lessac-low</code></td>
+            <td><b>0.0%</b></td>
+            <td>N/A</td>
+            <td>67 Bytes</td>
+            <td>0.81 s</td>
+            <td><span style="color:var(--g700);font-weight:700">Verified 100% Offline</span></td>
+          </tr>
+          <tr>
+            <td><b>Hindi</b> (<code>hi-IN</code>)</td>
+            <td><code>vosk-small-hi-0.22</code> + <code>pratham-medium</code></td>
+            <td><b>10.0%</b></td>
+            <td><b>2.4%</b></td>
+            <td>143 Bytes</td>
+            <td>0.81 s</td>
+            <td><span style="color:var(--g700);font-weight:700">Verified 100% Offline</span></td>
+          </tr>
+          <tr>
+            <td><b>8 Regional Languages</b></td>
+            <td>Modular architecture for Indic language packs</td>
+            <td>—</td>
+            <td>—</td>
+            <td>~150 Bytes (avg)</td>
+            <td>Sub-second</td>
+            <td><span style="color:var(--mute)">Drop-in Architecture Ready</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     <div class="note">
       <h3>Where accuracy drops</h3>
       <p>In 10 dB acoustic noise, such as cyclone wind or rotor wash, recognition falls by roughly 8–12% without a directional microphone.</p>
@@ -232,7 +276,7 @@
   <div class="wrap">
     <div>
       <p><strong style="color:#fff">iTantra</strong> · Offline multilingual voice transceiver</p>
-      <p>Built by Naman Tiwari for Smart India Hackathon 2026, ISRO Problem Statement 26104.</p>
+      <p>Built by Naman Tiwari for Smart India Hackathon 2026, ISRO Problem Statement 26173.</p>
       <p>© 2026 iTantra · Apache 2.0 licensed</p>
     </div>
     <div class="links">

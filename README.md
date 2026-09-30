@@ -248,5 +248,6 @@ python core_engine/virtual_transceiver.py -i
 - **Developer**: Naman Tiwari
 - **Project**: Smart India Hackathon (SIH 2026)
 - **Organization**: Indian Space Research Organisation (ISRO)
-- **Problem Statement**: PS 26104 — Indian Multilingual TTS & STT Aided Neural Transceiver Radio Access
+- **Problem Statement**: PS 26173 — Indian Multilingual TTS & STT Aided Neural Transceiver Radio Access
+- **Repository**: [github.com/Naman225/iTantra](https://github.com/Naman225/iTantra)
 - **Website**: [naman225.github.io/itantra-site](https://naman225.github.io/itantra-site/)

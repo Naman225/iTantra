@@ -6,15 +6,20 @@ This document is the **single source of truth** for all figures, throughputs, la
 
 ## 1. Frame & Protocol Specifications (`TantraPacket`)
 
-- **Fixed Binary Header Overhead**: `8 Bytes`
-  - Magic Byte: `0x54` ('T')
-  - Flags: `1 Byte` (Bit 7: SOS Distress, Bit 6: Alert / Hazard, Bits 0–3: Language ID)
+- **Fixed Binary Header Overhead**: `6 Bytes`
+  - Magic Byte: `0x54` ('T') (`1 Byte`)
+  - Flags: `1 Byte` (Bit 7: SOS Distress, Bit 6: PTT, Bit 5: Alert, Bit 4: HMAC Auth, Bits 0–3: Language ID)
   - Sequence Number: `2 Bytes` (`uint16`)
   - Payload Length: `2 Bytes` (`uint16`)
+- **Node ID (v2)**: `2 Bytes` (follows header)
+- **Security & Integrity**: 
+  - HMAC Checksum: `8 Bytes` (Optional)
   - CRC-16 CCITT Checksum: `2 Bytes` (`uint16`, polynomial `0x1021`)
-- **Node ID (v2)**: `2 Bytes` (embedded in header)
-- **Typical Payload Size**: `30 to 80 Bytes` (UTF-8 encoded text for spoken phrases)
-- **Total Packet Size**: **`65 to 120 Bytes`** (Average measured: **`~106.5 Bytes`**; short PTT beacon: **`~50 Bytes`**)
+- **Typical Payload Size**: `30 to 170 Bytes` (UTF-8 encoded text for spoken phrases)
+- **Total Packet Size**: 
+  - English: **`~38 to 77 Bytes`**
+  - Hindi: **`~86 to 153 Bytes`**
+  - Indic Average: **`~150 Bytes`**
 - **LoRa MTU Limit**: `255 Bytes` (iTantra frames are capped at `200 Bytes` payload to strictly avoid fragmentation)
 
 ---
@@ -23,24 +28,24 @@ This document is the **single source of truth** for all figures, throughputs, la
 
 - **Raw Uncompressed Voice Baseline**: `16 kHz, 16-bit Mono PCM = 256,000 bps (32,000 B/s)`
 - **Standard Voice Call (Opus / VoLTE)**: `16,000 bps (2,000 B/s)`
-- **iTantra Effective Bitrate**:
-  $$\text{Bitrate} = \frac{58 \text{ Bytes} \times 8 \text{ bits}}{3.5 \text{ s speech}} \approx \mathbf{132.5 \text{ bps}}$$
-  $$\text{Bitrate (for 106.5 B packet)} = \frac{106.5 \text{ Bytes} \times 8 \text{ bits}}{3.9 \text{ s speech}} \approx \mathbf{218.4 \text{ bps}}$$
+- **Codec2 Baseline**: `700 bps`
+- **iTantra Effective Bitrate**: **`~150 to 350 bps`** (depending on language and payload length)
 - **Bandwidth Reduction Percentage**:
-  - vs. Raw Audio (256 kbps): **`99.92% Bandwidth Saved`**
-  - vs. Compressed Opus (16 kbps): **`98.63% Bandwidth Saved`**
+  - vs. Raw Audio (256 kbps): **`>99% Bandwidth Saved`**
+  - vs. Compressed Opus (16 kbps): **`>95% Bandwidth Saved`**
+  - vs. Codec2 (700 bps): **`~50-70% savings`**
 
 ---
 
 ## 3. Real-Time Factor (RTF) & Latency Measurements
 
 - **Speech-to-Text (STT - Vosk Kaldi Mobile ARM)**:
-  - Real-Time Factor (RTF): **`0.163`** (Processes 1.0s of audio in ~163ms $\rightarrow$ **`6.1x faster than real-time`**)
+  - Real-Time Factor (RTF): **measured on desktop Python, mobile ARM numbers TBD**
 - **Text-to-Speech (TTS - Piper ONNX / Fast Neural)**:
-  - Real-Time Factor (RTF): **`0.049`** (Synthesizes 1.0s of audio in ~49ms $\rightarrow$ **`20.2x faster than real-time`**)
+  - Real-Time Factor (RTF): **measured on desktop Python, mobile ARM numbers TBD**
 - **End-to-End Turnaround Latency (Sentence Spoken to Heard)**:
-  - Local Wi-Fi Hotspot / Bluetooth RFCOMM: **`0.69s – 0.96s`**
-  - LoRa RF Link (SF7, 125 kHz BW): **`0.98s – 1.45s`**
+  - Local Wi-Fi Hotspot / Bluetooth RFCOMM: **sub-second latency**
+  - LoRa RF Link: Depends on spreading factor and payload size
 
 ---
 
@@ -49,10 +54,10 @@ This document is the **single source of truth** for all figures, throughputs, la
 - **Mobile Client RAM Usage (Heap)**: **`< 30 MB RAM`** on ARM Cortex Android devices
 - **Target Android ABI**: `arm64-v8a`, `armeabi-v7a`
 - **LoRa Transceiver Frequency**: `865.200 MHz` (Government of India De-licensed ISM Band)
-- **LoRa Modulation Parameters**: `SF7`, `BW 125 kHz`, `CR 4/5`, `Tx Power 20 dBm (100 mW)`
-- **LoRa Burst Airtime**: `98 ms to 179 ms` at SF7 (vs. 4 seconds for heavy audio packets at SF12)
-- **Estimated Tactical Line-of-Sight Reach**: `Up to 10–15 km` over open terrain; `1.5–3 km` in dense urban rubble
-- **Forward Error Correction (FEC) Recovery**: `99.4% packet recovery` over lossy RF links via Reed-Solomon / selective ARQ
+- **LoRa Modulation Parameters**: `SF7` (default firmware), `BW 125 kHz`, `CR 4/5`, `Tx Power 20 dBm (100 mW)`
+- **LoRa Burst Airtime**: 
+  - At default `SF7`: Fast transmission for close range
+  - **Estimated Tactical Line-of-Sight Reach**: `Up to 10–15 km` over open terrain requires `SF12` at the cost of **`~6s airtime per Indic packet`**
 - **Commodity Node Hardware Cost**: **`₹1,200 ($15)`** (ESP32 micro-controller + SX1276/SX1262 LoRa module)
 
 ---
@@ -60,9 +65,10 @@ This document is the **single source of truth** for all figures, throughputs, la
 ## 5. Language & Priority Triage
 
 - **Languages Supported**:
-  - Native On-Device Acoustic/Language Models: **Hindi (`hi-IN`)**, **Indian English (`en-IN`)**, **Tamil (`ta-IN`)**
-  - Planned Regional Expansion Packs: **Gujarati, Marathi, Kannada, Malayalam, Telugu, Odia, Bengali**
+  - Native On-Device Acoustic/Language Models (Installed): **Hindi (`hi-IN`)**, **Indian English (`en-IN`)**
+  - Publicly available but not installed: Gujarati, Telugu Vosk models; Malayalam Piper voice
+  - Planned Regional Expansion Packs: **Tamil, Gujarati, Marathi, Kannada, Malayalam, Telugu, Odia, Bengali**
 - **Priority Tiers**:
-  - `Tier 1: Red SOS`: Max volume alarm override, emergency buzzer, 65B beacon
+  - `Tier 1: Red SOS`: Max volume alarm override, emergency buzzer
   - `Tier 2: Yellow Alert`: Automatic hazard keyword triage (*"khatra"*, *"danger"*, *"chetawani"*)
   - `Tier 3: Normal Green`: Standard routine tactical comms

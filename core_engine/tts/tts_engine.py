@@ -66,6 +66,8 @@ class PiperOfflineTTS:
     def __init__(self, default_lang: str = "hi"):
         self.voices = {}
         self.current_lang = default_lang
+        self.fallback_langs = set()
+        self.voice_model_files = {}
         self.load_voice("en")
         self.load_voice("hi")
 
@@ -92,10 +94,12 @@ class PiperOfflineTTS:
                 f"Falling back to base neural voice: {fallback_file.name}"
             )
             model_file = fallback_file
+            self.fallback_langs.add(normalized_lang)
 
         voice = piper.PiperVoice.load(str(model_file))
         self.voices[normalized_lang] = voice
         self.current_lang = normalized_lang
+        self.voice_model_files[normalized_lang] = model_file
         return voice
 
     def synthesize(self, text: str, lang: Optional[str] = None, output_wav: Optional[str] = None) -> Dict[str, Any]:
@@ -145,7 +149,9 @@ class PiperOfflineTTS:
             "audio_duration_sec": round(audio_duration, 3),
             "synthesis_time_sec": round(synthesis_time, 4),
             "rtf": round(rtf, 4),
-            "pcm_bytes": pcm_bytes
+            "pcm_bytes": pcm_bytes,
+            "is_fallback": target_lang in self.fallback_langs,
+            "actual_model": self.voice_model_files.get(target_lang, Path("unknown")).name
         }
 
 

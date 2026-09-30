@@ -56,6 +56,8 @@ class VoskOfflineSTT:
         self.lang = lang
         self.model = None
         self.current_model_path = None
+        self.is_fallback = False
+        self.requested_lang = lang
         self.load_model(lang)
 
     def load_model(self, lang: str) -> float:
@@ -86,7 +88,15 @@ class VoskOfflineSTT:
         start_time = time.time()
         self.model = vosk.Model(str(model_path))
         load_time = time.time() - start_time
-        self.lang = normalized_lang
+        self.requested_lang = normalized_lang
+        # Track whether we fell back to a different language's model
+        actual_lang = normalized_lang
+        if model_path.name == "vosk-model-small-hi-0.22":
+            actual_lang = "hi"
+        elif model_path.name == "vosk-model-small-en-in-0.4":
+            actual_lang = "en"
+        self.is_fallback = (actual_lang != normalized_lang)
+        self.lang = actual_lang
         self.current_model_path = model_path
         return load_time
 
@@ -126,7 +136,9 @@ class VoskOfflineSTT:
             "audio_duration_sec": round(audio_duration, 3),
             "inference_time_sec": round(inference_time, 4),
             "rtf": round(rtf, 4),
-            "words": res.get("result", [])
+            "words": res.get("result", []),
+            "is_fallback": self.is_fallback,
+            "actual_model": self.current_model_path.name if self.current_model_path else "unknown"
         }
 
     def transcribe_stream(self, pcm_bytes: bytes, sample_rate: int = 16000) -> Dict[str, Any]:
@@ -149,7 +161,9 @@ class VoskOfflineSTT:
             "lang": self.lang,
             "audio_duration_sec": round(audio_duration, 3),
             "inference_time_sec": round(inference_time, 4),
-            "rtf": round(rtf, 4)
+            "rtf": round(rtf, 4),
+            "is_fallback": self.is_fallback,
+            "actual_model": self.current_model_path.name if self.current_model_path else "unknown"
         }
 
 

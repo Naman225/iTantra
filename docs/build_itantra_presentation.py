@@ -244,12 +244,12 @@ add_header_and_footer(slide2, 3, "TECHNICAL APPROACH")
 
 steps = [
     ("Audio Ingestion", "16 kHz Mono PCM\nPTT / Mic Capture"),
-    ("Noise Filter & VAD", "Bandpass 300-3400Hz\nSilero VAD Trim"),
-    ("Offline STT Engine", "Vosk Edge ASR\nRTF 0.163 (ARM NEON)"),
-    ("TantraPacket Enc", "106.5-Byte Binary\nMagic | Seq | CRC32"),
+    ("Noise Filter & VAD", "Bandpass 300-3400Hz\nEnergy VAD Trim"),
+    ("Offline STT Engine", "Vosk Edge ASR\nSub-second On-Device"),
+    ("TantraPacket Enc", "~100B Binary Frame\nMagic | Seq | CRC16"),
     ("3-Tier Priority Gate", "Preemptive Routing\nChannel Contention"),
-    ("Multi-Bearer RF", "LoRa SX1262 (865MHz)\n42ms Airtime / BT"),
-    ("Neural TTS Synth", "Piper VITS ONNX\nRTF 0.049 Local Voice")
+    ("Multi-Bearer RF", "LoRa / Wi-Fi UDP (5005)\nBluetooth RFCOMM"),
+    ("Neural TTS Synth", "Piper VITS ONNX\nSub-second Local Voice")
 ]
 
 start_x = 0.5
@@ -363,10 +363,10 @@ p_tb.font.name = "Liberation Sans"
 p_tb.font.color.rgb = COLOR_WHITE
 
 tech_cols = [
-    ("Speech AI / ML", ["Vosk Edge ASR", "Piper Neural VITS", "Silero VAD", "Apache-2.0 / MIT"]),
-    ("Embedded & RF", ["SX1262 LoRa PHY", "ESP32 C++ Core", "RadioLib Mesh", "BT RFCOMM SPP"]),
+    ("Speech AI / ML", ["Vosk Edge ASR", "Piper Neural VITS", "Energy VAD", "Apache-2.0 / MIT"]),
+    ("Embedded & RF", ["SX1262/SX1276 LoRa", "ESP32 C++ Core", "RadioLib PHY", "BT RFCOMM SPP"]),
     ("Mobile Platform", ["Android 14/15", "Jetpack Compose", "Kotlin Coroutines", "Material 3 Light"]),
-    ("Security & Proto", ["TantraPacket Binary", "AES-256 GCM", "CRC-32 Checksum", "Ephemeral RAM"])
+    ("Security & Proto", ["TantraPacket Binary", "HMAC Auth", "CRC-16 Checksum", "Ephemeral RAM"])
 ]
 
 sub_w = 1.3
@@ -562,9 +562,9 @@ p_stb.font.name = "Liberation Sans"
 p_stb.font.color.rgb = COLOR_WHITE
 
 strategies_items = [
-    ("Spectral Gating & Silero VAD", "Real-time 300Hz-3.4kHz bandpass filter eliminates 95% ambient noise."),
-    ("Reed-Solomon FEC & Selective ARQ", "Forward error correction ensures 99.4% packet recovery over lossy links."),
-    ("Phonetic Smoothing & 1-Tap SOS", "Phonetic similarity mapping + standardized tactical phrases for 100% accuracy.")
+    ("Spectral Gating & Energy VAD", "Real-time 300Hz-3.4kHz bandpass filter and energy thresholding eliminate background noise."),
+    ("CRC-16 & HMAC Authentication", "Integrity checks and HMAC tamper verification ensure secure packet transmission over lossy links."),
+    ("Phonetic Smoothing & 1-Tap SOS", "Phonetic similarity mapping + standardized tactical phrases for high accuracy.")
 ]
 
 for si_idx, (si_title, si_desc) in enumerate(strategies_items):

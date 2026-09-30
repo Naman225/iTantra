@@ -93,8 +93,8 @@ draw_arrow(x_coords[0] + bw, by1 + bh // 2, x_coords[1], by1 + bh // 2, "Raw PCM
 
 # Box 2
 draw_card(x_coords[1], by1, bw, bh, (254, 243, 199, 255), (245, 158, 11, 255),
-          "Noise Filter & Silero VAD", 
-          ["• 300Hz–3.4kHz Bandpass Filter", "• Silero VAD Neural Detector", "• Cuts 95% Siren/Flood Noise", "• Trims Silence & Saves Compute"],
+          "Noise Filter & Energy VAD", 
+          ["• 300Hz–3.4kHz Bandpass Filter", "• RMS Energy Thresholding", "• Cuts 95% Siren/Flood Noise", "• Trims Silence & Saves Compute"],
           "< 1ms Latency", ((254, 243, 199, 255), (180, 83, 9, 255)))
 
 draw_arrow(x_coords[1] + bw, by1 + bh // 2, x_coords[2], by1 + bh // 2, "Filtered Audio")
